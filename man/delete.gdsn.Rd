@@ -2,25 +2,22 @@
 \alias{delete.gdsn}
 \title{Delete a GDS node}
 \description{
-    Delete a specified GDS node.
+	Delete a specified GDS node.
 }
 
 \usage{
 delete.gdsn(node, force=FALSE)
 }
 \arguments{
-    \item{node}{an object of class \code{\link{gdsn.class}}, a GDS node}
-    \item{force}{if \code{FALSE}, it is not allowed to delete a non-empty
-        folder}
-}
-\value{
-    None.
+	\item{node}{an object of class \code{\link{gdsn.class}}, a GDS node}
+	\item{force}{if \code{FALSE}, it is not allowed to delete a non-empty
+		folder}
 }
 
-\references{\url{http://github.com/zhengxwen/gdsfmt}}
+\references{\url{http://sourceforge.net/projects/corearray/}}
 \author{Xiuwen Zheng}
 \seealso{
-    \code{\link{add.gdsn}}
+	\code{\link{add.gdsn}}
 }
 
 \examples{

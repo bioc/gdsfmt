@@ -2,21 +2,21 @@
 \alias{showfile.gds}
 \title{Enumerate opened GDS files}
 \description{
-    Enumerate all opened GDS files
+	Enumerate all opened GDS files
 }
 
 \usage{
 showfile.gds(closeall=FALSE, verbose=TRUE)
 }
 \arguments{
-    \item{closeall}{if \code{TRUE}, close all GDS files}
-    \item{verbose}{if \code{TRUE}, show information}
+	\item{closeall}{if \code{TRUE}, close all GDS files}
+	\item{verbose}{if \code{TRUE}, show information}
 }
 \value{
-    A list of \code{\link{gds.class}} objects.
+	A list of \code{\link{gds.class}} objects.
 }
 
-\references{\url{http://github.com/zhengxwen/gdsfmt}}
+\references{\url{http://sourceforge.net/projects/corearray/}}
 \author{Xiuwen Zheng}
 
 \examples{
