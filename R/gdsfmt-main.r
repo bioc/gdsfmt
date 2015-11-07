@@ -1100,20 +1100,19 @@ assign.gdsn <- function(node, src.node=NULL, resize=TRUE, seldim=NULL,
 
 
 #############################################################
-# Caching the data associated with a GDS variable
+# Cache the data associated with a GDS variable
 #
 cache.gdsn <- function(node)
 {
     stopifnot(inherits(node, "gdsn.class"))
 
-    # call C function
     .Call(gdsCache, node)
     invisible()
 }
 
 
 #############################################################
-# move to a new location
+# Move to a new location
 #
 moveto.gdsn <- function(node, loc.node,
     relpos = c("after", "before", "replace", "replace+rename"))
@@ -1122,15 +1121,13 @@ moveto.gdsn <- function(node, loc.node,
     stopifnot(inherits(loc.node, "gdsn.class"))
     relpos <- match.arg(relpos)
 
-    # call C function
     .Call(gdsMoveTo, node, loc.node, relpos)
-
     invisible()
 }
 
 
 #############################################################
-# copy to a new GDS node
+# Copy to a new GDS node
 #
 copyto.gdsn <- function(node, source, name=NULL)
 {
@@ -1144,23 +1141,84 @@ copyto.gdsn <- function(node, source, name=NULL)
         name <- name.gdsn(source, fullname=FALSE)
     stopifnot(is.character(name), length(name)==1L)
 
-    # call C function
     .Call(gdsCopyTo, node, name, source)
-
     invisible()
 }
 
 
 #############################################################
-# whether elements in node
+# Get whether elements in node
 #
 is.element.gdsn <- function(node, set)
 {
     stopifnot(inherits(node, "gdsn.class"))
     stopifnot(is.numeric(set) | is.character(set))
 
-    # call C function
     .Call(gdsIsElement, node, set)
+}
+
+
+#############################################################
+# Create hash function digests
+#
+digest.gdsn <- function(node, algo=c("md5", "sha1", "sha256", "sha384",
+    "sha512"), attr.action=c("none", "add", "remove", "verify", "return"))
+{
+    stopifnot(inherits(node, "gdsn.class"))
+    algo <- match.arg(algo)
+    attr.action <- match.arg(attr.action)
+
+    algolist <- c("md5", "sha1", "sha256", "sha384", "sha512")
+    if (attr.action == "remove")
+    {
+        at <- get.attr.gdsn(node)
+        nm <- intersect(names(at), algolist)
+        if (length(nm) > 0)
+            delete.attr.gdsn(node, nm)
+        invisible()
+    } else if (attr.action %in% c("verify", "return"))
+    {
+        at <- get.attr.gdsn(node)
+        ans <- rep(NA, length(algolist))
+        names(ans) <- algolist
+        for (i in seq_along(ans))
+        {
+            h1 <- at[[algolist[i]]]
+            if (is.character(h1) & !anyNA(h1))
+            {
+                h2 <- unname(digest.gdsn(node, algo=algolist[i]))
+                ans[i] <- identical(h1, h2)
+            }
+        }
+        if (attr.action == "verify")
+        {
+            v <- !ans
+            v[is.na(v)] <- FALSE
+            if (sum(v) > 0L)
+            {
+                s <- algolist[v]
+                if (length(s) > 1L)
+                    stop(paste(s, collapse=", "), " verification fail.")
+                else
+                    stop(s, " verification fails.")
+            }
+        }
+        ans
+    } else {
+        if (requireNamespace("digest", quietly=TRUE))
+        {
+            ans <- .Call(gdsDigest, node, algo)
+            if (attr.action == "add")
+            {
+                if (is.na(ans))
+                    warning("No valid hash code to add.")
+                put.attr.gdsn(node, algo, ans)
+            }
+            names(ans) <- algo
+            ans
+        } else
+            NA_character_
+    }
 }
 
 
@@ -1322,7 +1380,12 @@ print.gdsn.class <- function(x, expand=TRUE, all=FALSE, attribute=FALSE,
         if (is.character(n$encoder))
         {
             if (n$encoder != "")
-                s <- paste(s, BLURRED(n$encoder))
+            {
+                if (attribute)
+                    s <- paste(s, BLURRED(n$compress))
+                else
+                    s <- paste(s, BLURRED(n$encoder))
+            }
         }
         if (is.numeric(n$cpratio))
         {
