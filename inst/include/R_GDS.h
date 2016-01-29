@@ -8,7 +8,7 @@
 //
 // R_GDS.h: C interface to gdsfmt dynamic library
 //
-// Copyright (C) 2014-2015    Xiuwen Zheng
+// Copyright (C) 2014-2016    Xiuwen Zheng
 //
 // This file is part of CoreArray.
 //
@@ -29,7 +29,7 @@
  *	\file     R_GDS.h
  *	\author   Xiuwen Zheng
  *	\version  1.0
- *	\date     2014 - 2015
+ *	\date     2014 - 2016
  *	\brief    C interface to gdsfmt dynamic library
  *	\details
 **/
@@ -70,8 +70,8 @@ extern "C" {
 
 	// ==================================================================
 
-	/// Version of R package gdsfmt: v1.7.8
-	#define GDSFMT_R_VERSION       0x010708
+	/// Version of R package gdsfmt: v1.7.9
+	#define GDSFMT_R_VERSION       0x010709
 
 
 	// [[ ********
@@ -154,8 +154,8 @@ extern "C" {
 	extern C_BOOL GDS_R_Is_Logical(PdGDSObj Obj);
 	/// return true, if Obj is a factor variable
 	extern C_BOOL GDS_R_Is_Factor(PdGDSObj Obj);
-	/// return 1 used in UNPROTECT and set levels in 'val' if Obj is a factor in R; otherwise return 0
-	extern int GDS_R_Set_IfFactor(PdGDSObj Obj, SEXP val);
+	/// return 1 used in UNPROTECT and set levels in 'Val' if Obj is a factor in R; otherwise return 0
+	extern int GDS_R_Set_IfFactor(PdGDSObj Obj, SEXP Val);
 	/// return an R data object from a GDS object, allowing raw-type data
 	extern SEXP GDS_R_Array_Read(PdAbstractArray Obj, const C_Int32 *Start,
 		const C_Int32 *Length, const C_BOOL *const Selection[],
@@ -167,6 +167,11 @@ extern "C" {
 			PdArrayRead ReadObjList[], void *_Param),
 		void (*LoopFunc)(SEXP Argument, C_Int32 Idx, void *_Param),
 		void *Param, C_BOOL IncOrDec, C_UInt32 UseMode);
+	/// append R data
+	extern void GDS_R_Append(PdAbstractArray Obj, SEXP Val);
+	/// append R data with a range
+	extern void GDS_R_AppendEx(PdAbstractArray Obj, SEXP Val, size_t Start,
+		size_t Count);
 	/// return whether the elements in SetEL
 	extern void GDS_R_Is_Element(PdAbstractArray Obj, SEXP SetEL, C_BOOL Out[]);
 
