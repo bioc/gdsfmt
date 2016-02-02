@@ -70,8 +70,8 @@ extern "C" {
 
 	// ==================================================================
 
-	/// Version of R package gdsfmt: v1.7.9
-	#define GDSFMT_R_VERSION       0x010709
+	/// Version of R package gdsfmt: v1.7.10
+	#define GDSFMT_R_VERSION       0x01070A
 
 
 	// [[ ********
@@ -124,7 +124,7 @@ extern "C" {
 	// ==================================================================
 
 	/// the maximum number of GDS files
-	#define GDSFMT_MAX_NUM_GDS_FILES     256
+	#define GDSFMT_MAX_NUM_GDS_FILES     1024
 
 	/// the maximun number of dimensions in GDS array (requiring >= v1.5.3)
 	#define GDS_MAX_NUM_DIMENSION        256
