@@ -39,6 +39,7 @@
 
 #include "dStruct.h"
 #include <math.h>
+#include <typeinfo>
 
 
 namespace CoreArray
@@ -63,7 +64,7 @@ namespace CoreArray
 
 		static const int trVal = COREARRAY_TR_PACKED_REAL;
 		static const unsigned BitOf = 8u;
-		static const bool IsPrimitive = false;
+		static const bool IsPrimitive = true;
 		static const C_SVType SVType = svCustomFloat;
 
 		static const char *StreamName() { return "dPackedReal8"; }
@@ -85,7 +86,7 @@ namespace CoreArray
 
 		static const int trVal = COREARRAY_TR_PACKED_REAL;
 		static const unsigned BitOf = 16u;
-		static const bool IsPrimitive = false;
+		static const bool IsPrimitive = true;
 		static const C_SVType SVType = svCustomFloat;
 
 		static const char *StreamName() { return "dPackedReal16"; }
@@ -107,7 +108,7 @@ namespace CoreArray
 
 		static const int trVal = COREARRAY_TR_PACKED_REAL;
 		static const unsigned BitOf = 32u;
-		static const bool IsPrimitive = false;
+		static const bool IsPrimitive = true;
 		static const C_SVType SVType = svCustomFloat;
 
 		static const char *StreamName() { return "dPackedReal32"; }
