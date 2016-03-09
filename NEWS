@@ -1,4 +1,4 @@
-CHANGES IN VERSION 1.7.0-1.7.11
+CHANGES IN VERSION 1.7.0-1.7.12
 -------------------------
 
 NEW FEATURES
@@ -15,8 +15,14 @@ NEW FEATURES
 
     o new C functions `GDS_R_Append()` and `GDS_R_AppendEx()` in R_GDS.h
 
-    o it allows efficiently concatenating compressed blocks (i.e., ZIP_RA
+    o allows efficiently concatenating compressed blocks (i.e., ZIP_RA
       and LZ4_RA)
+
+    o v1.7.12: add a new data type: packedreal24
+
+UTILITIES
+
+    o `paste(..., sep="")` is replaced by `paste0(...)`
 
 BUG FIXES
 
