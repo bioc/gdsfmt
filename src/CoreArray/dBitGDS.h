@@ -187,9 +187,9 @@ namespace CoreArray
 			}
 		}
 
-		virtual void Append(const void *Buffer, ssize_t Cnt, C_SVType InSV)
+		virtual const void *Append(const void *Buffer, ssize_t Cnt, C_SVType InSV)
 		{
-			if (Cnt <= 0) return;
+			if (Cnt <= 0) return Buffer;
 
 			// writing
 			this->_SetLargeBuffer();
@@ -197,43 +197,43 @@ namespace CoreArray
 			switch (InSV)
 			{
 				case svInt8:
-					ALLOC_FUNC<BIT_TYPE, C_Int8>::Append(I, (const C_Int8*)Buffer, Cnt);
+					Buffer = ALLOC_FUNC<BIT_TYPE, C_Int8>::Append(I, (const C_Int8*)Buffer, Cnt);
 					break;
 				case svUInt8:
-					ALLOC_FUNC<BIT_TYPE, C_UInt8>::Append(I, (const C_UInt8*)Buffer, Cnt);
+					Buffer = ALLOC_FUNC<BIT_TYPE, C_UInt8>::Append(I, (const C_UInt8*)Buffer, Cnt);
 					break;
 				case svInt16:
-					ALLOC_FUNC<BIT_TYPE, C_Int16>::Append(I, (const C_Int16*)Buffer, Cnt);
+					Buffer = ALLOC_FUNC<BIT_TYPE, C_Int16>::Append(I, (const C_Int16*)Buffer, Cnt);
 					break;
 				case svUInt16:
-					ALLOC_FUNC<BIT_TYPE, C_UInt16>::Append(I, (const C_UInt16*)Buffer, Cnt);
+					Buffer = ALLOC_FUNC<BIT_TYPE, C_UInt16>::Append(I, (const C_UInt16*)Buffer, Cnt);
 					break;
 				case svInt32:
-					ALLOC_FUNC<BIT_TYPE, C_Int32>::Append(I, (const C_Int32*)Buffer, Cnt);
+					Buffer = ALLOC_FUNC<BIT_TYPE, C_Int32>::Append(I, (const C_Int32*)Buffer, Cnt);
 					break;
 				case svUInt32:
-					ALLOC_FUNC<BIT_TYPE, C_UInt32>::Append(I, (const C_UInt32*)Buffer, Cnt);
+					Buffer = ALLOC_FUNC<BIT_TYPE, C_UInt32>::Append(I, (const C_UInt32*)Buffer, Cnt);
 					break;
 				case svInt64:
-					ALLOC_FUNC<BIT_TYPE, C_Int64>::Append(I, (const C_Int64*)Buffer, Cnt);
+					Buffer = ALLOC_FUNC<BIT_TYPE, C_Int64>::Append(I, (const C_Int64*)Buffer, Cnt);
 					break;
 				case svUInt64:
-					ALLOC_FUNC<BIT_TYPE, C_UInt64>::Append(I, (const C_UInt64*)Buffer, Cnt);
+					Buffer = ALLOC_FUNC<BIT_TYPE, C_UInt64>::Append(I, (const C_UInt64*)Buffer, Cnt);
 					break;
 				case svFloat32:
-					ALLOC_FUNC<BIT_TYPE, C_Float32>::Append(I, (const C_Float32*)Buffer, Cnt);
+					Buffer = ALLOC_FUNC<BIT_TYPE, C_Float32>::Append(I, (const C_Float32*)Buffer, Cnt);
 					break;
 				case svFloat64:
-					ALLOC_FUNC<BIT_TYPE, C_Float64>::Append(I, (const C_Float64*)Buffer, Cnt);
+					Buffer = ALLOC_FUNC<BIT_TYPE, C_Float64>::Append(I, (const C_Float64*)Buffer, Cnt);
 					break;
 				case svStrUTF8:
-					ALLOC_FUNC<BIT_TYPE, UTF8String>::Append(I, (const UTF8String*)Buffer, Cnt);
+					Buffer = ALLOC_FUNC<BIT_TYPE, UTF8String>::Append(I, (const UTF8String*)Buffer, Cnt);
 					break;
 				case svStrUTF16:
-					ALLOC_FUNC<BIT_TYPE, UTF16String>::Append(I, (const UTF16String*)Buffer, Cnt);
+					Buffer = ALLOC_FUNC<BIT_TYPE, UTF16String>::Append(I, (const UTF16String*)Buffer, Cnt);
 					break;
 				default:
-					CdAllocArray::Append(Buffer, Cnt, InSV);
+					Buffer = CdAllocArray::Append(Buffer, Cnt, InSV);
 			}
 
 			// check
@@ -245,6 +245,7 @@ namespace CoreArray
 				this->_SetFlushEvent();
 				this->fNeedUpdate = true;
 			}
+			return Buffer;
 		}
 
 	protected:
@@ -709,15 +710,7 @@ namespace CoreArray
 	typedef CdUnsignedBit<23u>    CdBit23;
 	typedef CdArray<UInt24>       CdBit24;  // *
 
-	typedef CdUnsignedBit<25u>    CdBit25;
-	typedef CdUnsignedBit<26u>    CdBit26;
-	typedef CdUnsignedBit<27u>    CdBit27;
-	typedef CdUnsignedBit<28u>    CdBit28;
-	typedef CdUnsignedBit<29u>    CdBit29;
-	typedef CdUnsignedBit<30u>    CdBit30;
-	typedef CdUnsignedBit<31u>    CdBit31;
 	typedef CdUInt32              CdBit32;  // *
-
 	typedef CdUInt64              CdBit64;  // *
 
 
@@ -749,15 +742,7 @@ namespace CoreArray
 	typedef CdSignedBit<23u>    CdSBit23;
 	typedef CdArray<Int24>      CdSBit24; // *
 
-	typedef CdSignedBit<25u>    CdSBit25;
-	typedef CdSignedBit<26u>    CdSBit26;
-	typedef CdSignedBit<27u>    CdSBit27;
-	typedef CdSignedBit<28u>    CdSBit28;
-	typedef CdSignedBit<29u>    CdSBit29;
-	typedef CdSignedBit<30u>    CdSBit30;
-	typedef CdSignedBit<31u>    CdSBit31;
 	typedef CdInt32             CdSBit32; // *
-
 	typedef CdInt64             CdSBit64; // *
 }
 
