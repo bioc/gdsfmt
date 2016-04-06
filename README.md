@@ -18,13 +18,13 @@ This package provides a high-level R interface to CoreArray Genomic Data Structu
 
 ## Bioconductor:
 
-Release Version: v1.6.2
+Release Version:
 
 [http://www.bioconductor.org/packages/release/bioc/html/gdsfmt.html](http://www.bioconductor.org/packages/release/bioc/html/gdsfmt.html)
 
 [Help Documents](http://zhengxwen.github.io/gdsfmt/release/help/00Index.html)
 
-Development Version: v1.7.16
+Development Version:
 
 [http://www.bioconductor.org/packages/devel/bioc/html/gdsfmt.html](http://www.bioconductor.org/packages/devel/bioc/html/gdsfmt.html)
 
@@ -80,10 +80,6 @@ The `install_github()` approach requires that you build from source, i.e. `make`
 
 ## GDS Command-line Tools
 
-### viewgds
-
-`viewgds` is a shell script written in R ([viewgds.R](https://github.com/zhengxwen/Documents/blob/master/Program/viewgds.R)), to view the contents of a GDS file. The R packages `gdsfmt`, `getopt` and `optparse` should be installed before running `viewgds`, and the package `crayon` is optional.
-
 In the R environment,
 ```R
 install.packages("getopt", repos="http://cran.r-project.org")
@@ -93,6 +89,12 @@ install.packages("crayon", repos="http://cran.r-project.org")
 source("http://bioconductor.org/biocLite.R")
 biocLite("gdsfmt")
 ```
+
+[See More...](https://github.com/zhengxwen/Documents/tree/master/Program)
+
+### viewgds
+
+`viewgds` is a shell script written in R ([viewgds.R](https://github.com/zhengxwen/Documents/blob/master/Program/viewgds.R)), to view the contents of a GDS file. The R packages `gdsfmt`, `getopt` and `optparse` should be installed before running `viewgds`, and the package `crayon` is optional.
 
 Installation with command line,
 ```sh
@@ -106,7 +108,26 @@ wget -qO- --no-check-certificate https://raw.githubusercontent.com/zhengxwen/Doc
 chmod +x viewgds
 ```
 
-[See More...](https://github.com/zhengxwen/Documents/tree/master/Program)
+## diffgds.R
+
+`diffgds` is a shell script written in R, to compare two files GDS files. The R packages `gdsfmt`, `getopt` and `optparse` should be installed before running `diffgds`.
+
+Installation with command line,
+```sh
+echo '#!' `which Rscript` '--vanilla' > diffgds
+curl -L https://raw.githubusercontent.com/zhengxwen/Documents/master/Program/diffgds.R >> diffgds
+chmod +x diffgds
+
+## Or
+echo '#!' `which Rscript` '--vanilla' > diffgds
+wget -qO- --no-check-certificate https://raw.githubusercontent.com/zhengxwen/Documents/master/Program/diffgds.R >> diffgds
+chmod +x diffgds
+```
+
+```
+Usage: diffgds [options] file1 file2
+```
+
 
 
 ## Examples
