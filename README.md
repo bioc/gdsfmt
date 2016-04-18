@@ -93,7 +93,7 @@ biocLite("gdsfmt")
 
 [See More...](https://github.com/zhengxwen/Documents/tree/master/Program)
 
-### viewgds
+### *viewgds*
 
 `viewgds` is a shell script written in R ([viewgds.R](https://github.com/zhengxwen/Documents/blob/master/Program/viewgds.R)), to view the contents of a GDS file. The R packages `gdsfmt`, `getopt` and `optparse` should be installed before running `viewgds`, and the package `crayon` is optional.
 
@@ -109,9 +109,14 @@ wget -qO- --no-check-certificate https://raw.githubusercontent.com/zhengxwen/Doc
 chmod +x viewgds
 ```
 
-### diffgds
+```
+Usage: viewgds [options] file1
+```
 
-`diffgds` is a shell script written in R, to compare two files GDS files. The R packages `gdsfmt`, `getopt` and `optparse` should be installed before running `diffgds`.
+
+### *diffgds*
+
+`diffgds` is a shell script written in R ([diffgds.R](https://github.com/zhengxwen/Documents/blob/master/Program/diffgds.R)), to compare two files GDS files. The R packages `gdsfmt`, `getopt` and `optparse` should be installed before running `diffgds`.
 
 Installation with command line,
 ```sh
