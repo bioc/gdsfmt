@@ -97,6 +97,10 @@ biocLite("gdsfmt")
 
 `viewgds` is a shell script written in R ([viewgds.R](https://github.com/zhengxwen/Documents/blob/master/Program/viewgds.R)), to view the contents of a GDS file. The R packages `gdsfmt`, `getopt` and `optparse` should be installed before running `viewgds`, and the package `crayon` is optional.
 
+```
+Usage: viewgds [options] file
+```
+
 Installation with command line,
 ```sh
 echo '#!' `which Rscript` '--vanilla' > viewgds
@@ -109,14 +113,14 @@ wget -qO- --no-check-certificate https://raw.githubusercontent.com/zhengxwen/Doc
 chmod +x viewgds
 ```
 
-```
-Usage: viewgds [options] file1
-```
-
 
 ### *diffgds*
 
 `diffgds` is a shell script written in R ([diffgds.R](https://github.com/zhengxwen/Documents/blob/master/Program/diffgds.R)), to compare two files GDS files. The R packages `gdsfmt`, `getopt` and `optparse` should be installed before running `diffgds`.
+
+```
+Usage: diffgds [options] file1 file2
+```
 
 Installation with command line,
 ```sh
@@ -128,10 +132,6 @@ chmod +x diffgds
 echo '#!' `which Rscript` '--vanilla' > diffgds
 wget -qO- --no-check-certificate https://raw.githubusercontent.com/zhengxwen/Documents/master/Program/diffgds.R >> diffgds
 chmod +x diffgds
-```
-
-```
-Usage: diffgds [options] file1 file2
 ```
 
 
@@ -171,7 +171,7 @@ File: test.gds (1.1K)
 +    [  ]
 |--+ int   { Int32 10000, 39.1K }
 |--+ double   { Float64 2498, 19.5K }
-|--+ character   { VStr8 4, 26B }
+|--+ character   { Str8 4, 26B }
 |--+ logical   { Int32,logical 150, 600B } *
 |--+ factor   { Int32,factor 3, 12B } *
 |--+ bit2   { Bit2 1000, 250B }

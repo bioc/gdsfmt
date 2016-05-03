@@ -89,14 +89,6 @@ namespace gdsfmt
 			ClassMap["bit15"] = TdTraits< CoreArray::BIT15 >::StreamName();
 			ClassMap["bit16"] = TdTraits< C_UInt16         >::StreamName();
 
-			ClassMap["bit17"] = TdTraits< CoreArray::BIT17 >::StreamName();
-			ClassMap["bit18"] = TdTraits< CoreArray::BIT18 >::StreamName();
-			ClassMap["bit19"] = TdTraits< CoreArray::BIT19 >::StreamName();
-			ClassMap["bit20"] = TdTraits< CoreArray::BIT20 >::StreamName();
-			ClassMap["bit21"] = TdTraits< CoreArray::BIT21 >::StreamName();
-			ClassMap["bit22"] = TdTraits< CoreArray::BIT22 >::StreamName();
-			ClassMap["bit23"] = TdTraits< CoreArray::BIT23 >::StreamName();
-
 			ClassMap["bit24"] = TdTraits< CoreArray::UInt24 >::StreamName();
 			ClassMap["bit32"] = TdTraits< C_UInt32          >::StreamName();
 			ClassMap["bit64"] = TdTraits< C_UInt64          >::StreamName();
@@ -118,14 +110,6 @@ namespace gdsfmt
 			ClassMap["sbit15"] = TdTraits< CoreArray::SBIT15 >::StreamName();
 			ClassMap["sbit16"] = TdTraits< C_Int16           >::StreamName();
 
-			ClassMap["sbit17"] = TdTraits< CoreArray::SBIT17 >::StreamName();
-			ClassMap["sbit18"] = TdTraits< CoreArray::SBIT18 >::StreamName();
-			ClassMap["sbit19"] = TdTraits< CoreArray::SBIT19 >::StreamName();
-			ClassMap["sbit20"] = TdTraits< CoreArray::SBIT20 >::StreamName();
-			ClassMap["sbit21"] = TdTraits< CoreArray::SBIT21 >::StreamName();
-			ClassMap["sbit22"] = TdTraits< CoreArray::SBIT22 >::StreamName();
-			ClassMap["sbit23"] = TdTraits< CoreArray::SBIT23 >::StreamName();
-
 			ClassMap["sbit24"] = TdTraits< CoreArray::Int24 >::StreamName();
 			ClassMap["sbit32"] = TdTraits< C_Int32          >::StreamName();
 			ClassMap["sbit64"] = TdTraits< C_Int64          >::StreamName();
@@ -145,12 +129,15 @@ namespace gdsfmt
 			// ==============================================================
 			// String
 
-			ClassMap["string"   ] = TdTraits< VARIABLE_LENGTH<C_UTF8>  >::StreamName();
-			ClassMap["string16" ] = TdTraits< VARIABLE_LENGTH<C_UTF16> >::StreamName();
-			ClassMap["string32" ] = TdTraits< VARIABLE_LENGTH<C_UTF32> >::StreamName();
-			ClassMap["fstring"  ] = TdTraits< FIXED_LENGTH<C_UTF8>  >::StreamName();
-			ClassMap["fstring16"] = TdTraits< FIXED_LENGTH<C_UTF16> >::StreamName();
-			ClassMap["fstring32"] = TdTraits< FIXED_LENGTH<C_UTF32> >::StreamName();
+			ClassMap["string"   ] = TdTraits< VARIABLE_LEN<C_UTF8>  >::StreamName();
+			ClassMap["string16" ] = TdTraits< VARIABLE_LEN<C_UTF16> >::StreamName();
+			ClassMap["string32" ] = TdTraits< VARIABLE_LEN<C_UTF32> >::StreamName();
+			ClassMap["cstring"  ] = TdTraits< C_STRING<C_UTF8>  >::StreamName();
+			ClassMap["cstring16"] = TdTraits< C_STRING<C_UTF16> >::StreamName();
+			ClassMap["cstring32"] = TdTraits< C_STRING<C_UTF32> >::StreamName();
+			ClassMap["fstring"  ] = TdTraits< FIXED_LEN<C_UTF8>  >::StreamName();
+			ClassMap["fstring16"] = TdTraits< FIXED_LEN<C_UTF16> >::StreamName();
+			ClassMap["fstring32"] = TdTraits< FIXED_LEN<C_UTF32> >::StreamName();
 
 
 			// ==============================================================
@@ -163,7 +150,7 @@ namespace gdsfmt
 			ClassMap["float"    ] = TdTraits< C_Float32 >::StreamName();
 			ClassMap["numeric"  ] = TdTraits< C_Float64 >::StreamName();
 			ClassMap["double"   ] = TdTraits< C_Float64 >::StreamName();
-			ClassMap["character"] = TdTraits< VARIABLE_LENGTH<C_UTF8> >::StreamName();
+			ClassMap["character"] = TdTraits< VARIABLE_LEN<C_UTF8> >::StreamName();
 			ClassMap["logical"  ] = TdTraits< C_Int32 >::StreamName();
 			ClassMap["factor"   ] = TdTraits< C_Int32 >::StreamName();
 
@@ -1120,10 +1107,9 @@ COREARRAY_DLL_EXPORT SEXP gdsNodeObjDesp(SEXP Node)
 				if (_Obj->PipeInfo())
 				{
 					SET_STRING_ELT(encoder, 0,
-						mkCharCE(_Obj->PipeInfo()->Coder(), CE_UTF8));
+						mkChar(_Obj->PipeInfo()->Coder()));
 					SET_STRING_ELT(coder, 0,
-						mkCharCE(_Obj->PipeInfo()->CoderParam().c_str(),
-						CE_UTF8));
+						mkChar(_Obj->PipeInfo()->CoderParam().c_str()));
 					if (_Obj->PipeInfo()->StreamTotalIn() > 0)
 					{
 						REAL(ratio)[0] = (double)
@@ -1304,9 +1290,9 @@ COREARRAY_DLL_EXPORT SEXP gdsAddNode(SEXP Node, SEXP NodeName, SEXP Val,
 		"Unused additional parameters (...) in 'add.gdsn'!";
 	static const char *FixedString[] =
 	{
-		TdTraits< FIXED_LENGTH<C_UTF8>  >::StreamName(),
-		TdTraits< FIXED_LENGTH<C_UTF16> >::StreamName(),
-		TdTraits< FIXED_LENGTH<C_UTF32> >::StreamName(),
+		TdTraits< FIXED_LEN<C_UTF8>  >::StreamName(),
+		TdTraits< FIXED_LEN<C_UTF16> >::StreamName(),
+		TdTraits< FIXED_LEN<C_UTF32> >::StreamName(),
 		NULL
 	};
 	static const char *PackedReal[] =
@@ -1443,7 +1429,20 @@ COREARRAY_DLL_EXPORT SEXP gdsAddNode(SEXP Node, SEXP NodeName, SEXP Val,
 
 		// data compression mode
 		if (dynamic_cast<CdGDSObjPipe*>(rv_obj))
-			static_cast<CdGDSObjPipe*>(rv_obj)->SetPackedMode(cp);
+		{
+			CdGDSObjPipe *obj = static_cast<CdGDSObjPipe*>(rv_obj);
+			obj->SetPackedMode(cp);
+			// check compression parameters
+			if (obj->PipeInfo())
+			{
+				if (strcmp(obj->PipeInfo()->Coder(), "LZMA_ra") == 0)
+				{
+					string s = obj->PipeInfo()->CoderParam();
+					if (s.find("16K") != string::npos)
+						warning("LZMA_ra:16K is almost equivalent to LZMA_ra:32K.");
+				}
+			}
+		}
 
 		// output value
 		rv_ans = GDS_R_Obj2SEXP(rv_obj);
@@ -3134,7 +3133,7 @@ COREARRAY_DLL_EXPORT SEXP gdsSystem()
 		// class list
 		RegisterClass();
 		vector<string> key, desp;
-		dObjManager().ClassList(key, desp);
+		dObjManager().GetClassDesp(key, desp);
 		SEXP Key = PROTECT(NEW_CHARACTER(key.size()));
 		nProtect ++;
 		SEXP Desp = PROTECT(NEW_CHARACTER(desp.size()));
