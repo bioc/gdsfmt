@@ -491,10 +491,10 @@ namespace CoreArray
 	{
 		typedef struct TType
 		{
-			TType(const UTF8String &val) { value = UTF8ToUTF16(val); }
-			COREARRAY_INLINE operator UTF16String() const { return value; }
+			TType(const UTF8String &val): value(val) { }
+			COREARRAY_INLINE operator UTF16String() const { return UTF8ToUTF16(value); }
 		private:
-			UTF16String value;
+			const UTF8String &value;
 		} Type;
 
 		COREARRAY_INLINE static UTF16String *Cvt(UTF16String *p, const UTF8String *s, ssize_t n)
@@ -517,10 +517,10 @@ namespace CoreArray
 	{
 		typedef struct TType
 		{
-			TType(const UTF8String &val) { value = UTF8ToUTF32(val); }
-			COREARRAY_INLINE operator UTF32String() const { return value; }
+			TType(const UTF8String &val): value(val) { }
+			COREARRAY_INLINE operator UTF32String() const { return UTF8ToUTF32(value); }
 		private:
-			UTF32String value;
+			const UTF8String &value;
 		} Type;
 
 		COREARRAY_INLINE static UTF32String *Cvt(UTF32String *p, const UTF8String *s, ssize_t n)
@@ -595,10 +595,10 @@ namespace CoreArray
 	{
 		typedef struct TType
 		{
-			TType(const UTF16String &val) { value = UTF16ToUTF8(val); }
-			COREARRAY_INLINE operator UTF8String() const { return value; }
+			TType(const UTF16String &val): value(val) { }
+			COREARRAY_INLINE operator UTF8String() const { return UTF16ToUTF8(value); }
 		private:
-			UTF8String value;
+			const UTF16String &value;
 		} Type;
 
 		COREARRAY_INLINE static UTF8String *Cvt(UTF8String *p, const UTF16String *s, ssize_t n)
@@ -621,10 +621,10 @@ namespace CoreArray
 	{
 		typedef struct TType
 		{
-			TType(const UTF16String &val) { value = UTF16ToUTF32(val); }
-			COREARRAY_INLINE operator UTF32String() const { return value; }
+			TType(const UTF16String &val): value(val) { }
+			COREARRAY_INLINE operator UTF32String() const { return UTF16ToUTF32(value); }
 		private:
-			UTF32String value;
+			const UTF16String &value;
 		} Type;
 
 		COREARRAY_INLINE static UTF32String *Cvt(UTF32String *p, const UTF16String *s, ssize_t n)
@@ -699,10 +699,10 @@ namespace CoreArray
 	{
 		typedef struct TType
 		{
-			TType(const UTF32String &val) { value = UTF32ToUTF8(val); }
-			COREARRAY_INLINE operator UTF8String() const { return value; }
+			TType(const UTF32String &val): value(val) { }
+			COREARRAY_INLINE operator UTF8String() const { return UTF32ToUTF8(value); }
 		private:
-			UTF8String value;
+			const UTF32String &value;
 		} Type;
 
 		COREARRAY_INLINE static UTF8String *Cvt(UTF8String *p, const UTF32String *s, ssize_t n)
@@ -725,10 +725,10 @@ namespace CoreArray
 	{
 		typedef struct TType
 		{
-			TType(const UTF32String &val) { value = UTF32ToUTF16(val); }
-			COREARRAY_INLINE operator UTF16String() const { return value; }
+			TType(const UTF32String &val): value(val) { }
+			COREARRAY_INLINE operator UTF16String() const { return UTF32ToUTF16(value); }
 		private:
-			UTF16String value;
+			const UTF32String &value;
 		} Type;
 
 		COREARRAY_INLINE static UTF16String *Cvt(UTF16String *p, const UTF32String *s, ssize_t n)
@@ -744,6 +744,62 @@ namespace CoreArray
 		}
 	};
 
+
+	// =====================================================================
+
+#ifdef COREARRAY_SIMD_SSE2
+
+	C_Int8* vec_simd_i32_to_i8(C_Int8 *p, const C_Int32 *s, size_t n);
+	C_Int8* vec_simd_i32_to_i8_sel(C_Int8 *p, const C_Int32 *s, size_t n, const C_BOOL sel[]);
+
+	/// Type Convert: int32 to int8
+	template<> struct COREARRAY_DLL_DEFAULT
+		VAL_CONV<C_Int8, C_Int32, COREARRAY_TR_INTEGER, COREARRAY_TR_INTEGER>
+	{
+		typedef C_Int8 Type;
+		COREARRAY_INLINE static C_Int8 *Cvt(C_Int8 *p, const C_Int32 *s, ssize_t n)
+			{ return vec_simd_i32_to_i8(p, s, n); }
+		COREARRAY_INLINE static C_Int8 *CvtSub(C_Int8 *p, const C_Int32 *s, ssize_t n, const C_BOOL sel[])
+			{ return vec_simd_i32_to_i8_sel(p, s, n, sel); }
+	};
+
+	/// Type Convert: int32 to uint8
+	template<> struct COREARRAY_DLL_DEFAULT
+		VAL_CONV<C_UInt8, C_Int32, COREARRAY_TR_INTEGER, COREARRAY_TR_INTEGER>
+	{
+		typedef C_UInt8 Type;
+		COREARRAY_INLINE static C_UInt8 *Cvt(C_UInt8 *p, const C_Int32 *s, ssize_t n)
+			{ return (C_UInt8*)vec_simd_i32_to_i8((C_Int8*)p, s, n); }
+		COREARRAY_INLINE static C_UInt8 *CvtSub(C_UInt8 *p, const C_Int32 *s, ssize_t n, const C_BOOL sel[])
+			{ return (C_UInt8*)vec_simd_i32_to_i8_sel((C_Int8*)p, s, n, sel); }
+	};
+
+	/// Type Convert: uint32 to int8
+	template<> struct COREARRAY_DLL_DEFAULT
+		VAL_CONV<C_Int8, C_UInt32, COREARRAY_TR_INTEGER, COREARRAY_TR_INTEGER>
+	{
+		typedef C_Int8 Type;
+		COREARRAY_INLINE static C_Int8 *Cvt(C_Int8 *p, const C_UInt32 *s, ssize_t n)
+			{ return vec_simd_i32_to_i8(p, (C_Int32*)s, n); }
+		COREARRAY_INLINE static C_Int8 *CvtSub(C_Int8 *p, const C_UInt32 *s, ssize_t n, const C_BOOL sel[])
+			{ return vec_simd_i32_to_i8_sel(p, (C_Int32*)s, n, sel); }
+	};
+
+	/// Type Convert: uint32 to uint8
+	template<> struct COREARRAY_DLL_DEFAULT
+		VAL_CONV<C_UInt8, C_UInt32, COREARRAY_TR_INTEGER, COREARRAY_TR_INTEGER>
+	{
+		typedef C_UInt8 Type;
+		COREARRAY_INLINE static C_UInt8 *Cvt(C_UInt8 *p, const C_UInt32 *s, ssize_t n)
+			{ return (C_UInt8*)vec_simd_i32_to_i8((C_Int8*)p, (C_Int32*)s, n); }
+		COREARRAY_INLINE static C_UInt8 *CvtSub(C_UInt8 *p, const C_UInt32 *s, ssize_t n, const C_BOOL sel[])
+			{ return (C_UInt8*)vec_simd_i32_to_i8_sel((C_Int8*)p, (C_Int32*)s, n, sel); }
+	};
+
+#endif
+
+
+	// =====================================================================
 
 	/// Conversion from SRC_TYPE to DEST_TYPE
 	#define VAL_CONVERT(DEST_TYPE, SRC_TYPE, VAL)  (typename VAL_CONV<DEST_TYPE, SRC_TYPE>::Type(VAL))
