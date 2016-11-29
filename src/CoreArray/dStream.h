@@ -339,6 +339,8 @@ namespace CoreArray
 		void GetBlockInfo(vector<SIZE64> &RawSize, vector<SIZE64> &CmpSize);
 
 	protected:
+		/// the version number
+		C_UInt8 fVersion;
 		/// the total number of independent compressed block
 		C_Int32 fBlockNum;
 		/// the current index of independent compressed block

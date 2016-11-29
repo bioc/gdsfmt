@@ -467,10 +467,14 @@ void CdRA_Read::InitReadStream()
 	if (!ReadMagicNumber(*fOwner.fStream))
 		throw ErrRecodeStream("Invalid stream header with random access.");
 
-	// get the algorithm version, but unused here
-	C_Int8 v = fOwner.fStream->R8b();
-	if (v != 0x10)
-		throw ErrStream("Unsupported version v%d.%d.", v >> 4, v & 0x0F);
+	// get the algorithm version
+	fVersion = fOwner.fStream->R8b();
+	if (fVersion != 0x10)
+	{
+		throw ErrStream(
+			"Unsupported version v%d.%d, you might have to upgrade the gdsfmt package",
+			fVersion >> 4, fVersion & 0x0F);
+	}
 	// get size type
 	C_Int8 b = fOwner.fStream->R8b();
 	if ((b < raFirst) || (b > raLast)) b = raUnknown;
@@ -487,7 +491,7 @@ void CdRA_Read::InitReadStream()
 		fIndex = new TIndex[n];
 		memset(fIndex, 0, sizeof(TIndex)*n);
 	} else
-		throw ErrStream("the number of compression blocks should be known.");
+		throw ErrStream("the number of compression blocks should be defined.");
 
 	// the first compressed block
 	fBlockIdx = 0;
