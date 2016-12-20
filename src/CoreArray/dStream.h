@@ -293,7 +293,7 @@ namespace CoreArray
 	class COREARRAY_DLL_DEFAULT CdRAAlgorithm
 	{
 	public:
-		/// the size of independent compressed data block
+		/// the size of independent compressed data block, don't try to modify
 		enum TBlockSize
 		{
 			raUnknown = -1,   ///< unknown or unspecified size
@@ -306,7 +306,7 @@ namespace CoreArray
 			ra1MB     =  6,   ///< 1 MiB
 			ra2MB     =  7,   ///< 2 MiB
 			ra4MB     =  8,   ///< 4 MiB
-			ra8MB     =  9,   ///< 8 MiB, the maximum value in current format
+			ra8MB     =  9,   ///< 8 MiB, the maximum value in the current format
 			raFirst   =  0,   ///< the first valid value
 			raLast    =  9,   ///< the last valid value
 			raDefault =  4    ///< the default value
@@ -355,6 +355,8 @@ namespace CoreArray
 		SIZE64 fCB_UZSize;
 		/// the start position of block list
 		SIZE64 fBlockListStart;
+		/// the start position of indexing information, ZERO for no indexing
+		SIZE64 fIndexingStart;
 
 		/// indexing structure
 		struct TIndex {
@@ -370,16 +372,18 @@ namespace CoreArray
 		void InitReadStream();
 		/// seek in the stream, return true to require reset deflate algorithm
 		bool SeekStream(SIZE64 Position);
-		/// read the magic number on Stream, return true if succeeds
-		virtual bool ReadMagicNumber(CdStream &Stream) = 0;
 		/// go to the next block
 		bool NextBlock();
 		/// Binary search in the list of indexing among low..high
 		void BinSearch(SIZE64 Position, ssize_t low, ssize_t high);
+		/// read the magic number on Stream, return true if succeeds
+		virtual bool ReadMagicNumber(CdStream &Stream) = 0;
+		/// load the indexing information for version 0x11
+		void LoadIndexing();
 
 	private:
-		/// get the header of block
-		inline void GetBlockHeader();
+		/// get the header of block used in Version_1.0
+		inline void GetBlockHeader_v1_0();
 	};
 
 	/// The writing algorithm with random access on data stream
@@ -399,6 +403,8 @@ namespace CoreArray
 		void DoneWriteBlock();
 
 	protected:
+		/// the version number, 0x11 by default
+		C_UInt8 fVersion;
 		/// the total number of independent compressed block
 		C_Int32 fBlockNum;
 		/// the starting position of compressed block
@@ -409,6 +415,10 @@ namespace CoreArray
 		SIZE64 fBlockListStart;
 		/// whether a block is initialized
 		bool fHasInitWriteBlock;
+		/// save block info in version 0x11
+		vector<C_UInt64> fBlockInfoList;
+		/// add indexing info to fBlockInfoList
+		inline void AddBlockInfo(C_UInt32 CmpLen, C_UInt32 RawLen);
 
 		/// write the magic number on Stream
 		virtual void WriteMagicNumber(CdStream &Stream) = 0;
