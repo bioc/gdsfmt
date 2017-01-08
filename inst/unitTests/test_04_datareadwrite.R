@@ -20,13 +20,14 @@ test.data.read_write <- function()
 	})
 
 	verbose <- options("test.verbose")$test.verbose
-	if (verbose) cat("\n")
+	if (verbose) cat("\n\n>>>> test.data.read_write <<<<\n")
 
 	valid.dta <- get(load(sprintf("%s/valid/standard.RData", base.path)))
 
 	for (n in type.list)
 	{
 		if (verbose) cat(n, "\t", sep="")
+		if (n %in% c("vl_uint", "vl_int")) next
 
 		dta <- matrix(valid.dta[[sprintf("valid1.%s", n)]], nrow=50, ncol=40)
 
@@ -84,7 +85,7 @@ test.data.read_write.compress.zip <- function()
 	})
 
 	verbose <- options("test.verbose")$test.verbose
-	if (verbose) cat("\n")
+	if (verbose) cat("\n\n>>>> test.data.read_write.compress.zip <<<<\n")
 
 	valid.dta <- get(load(sprintf("%s/valid/standard.RData", base.path)))
 	set.seed(1000)
@@ -97,6 +98,7 @@ test.data.read_write.compress.zip <- function()
 		for (n in type.list)
 		{
 			if (verbose) cat(n, "\t", sep="")
+			if (n %in% c("vl_uint", "vl_int")) next
 
 			dta <- matrix(valid.dta[[sprintf("valid1.%s", n)]], nrow=50, ncol=40)
 
@@ -152,7 +154,7 @@ test.data.read_write.file <- function()
 	})
 
 	verbose <- options("test.verbose")$test.verbose
-	if (verbose) cat("\n")
+	if (verbose) cat("\n\n>>>> test.data.read_write.file <<<<\n")
 
 	# the name of file
 	fn <- sprintf("%s/valid/standard.RData", base.path)
@@ -172,8 +174,6 @@ test.data.read_write.file <- function()
 
 		# close the gds file
 		closefn.gds(gfile)
-		unlink("tmp.gds")
-		unlink("tmp.RData")
 	}
 }
 
@@ -186,7 +186,7 @@ test.data.read_selection <- function()
 	})
 
 	verbose <- options("test.verbose")$test.verbose
-	if (verbose) cat("\n")
+	if (verbose) cat("\n\n>>>> test.data.read_selection <<<<\n")
 
 	valid.dta <- get(load(sprintf("%s/valid/standard.RData", base.path)))
 	set.seed(1000)

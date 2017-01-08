@@ -14,6 +14,14 @@ library(gdsfmt)
 
 test.random_access_1 <- function()
 {
+	on.exit({
+		showfile.gds(closeall=TRUE, verbose=FALSE)
+		unlink("tmp.gds", force=TRUE)
+	})
+
+	verbose <- options("test.verbose")$test.verbose
+	if (verbose) cat("\n>>>> test.random_access_1 <<<<\n")
+
 	########  High Compression Rate (ratio: 6.3%)  ########
 
 	####  cteate a GDS file  ####
@@ -72,14 +80,19 @@ test.random_access_1 <- function()
 
 	# close the file
 	closefn.gds(f)
-
-	# delete the GDS file
-	unlink("tmp.gds")
 }
 
 
 test.random_access_2 <- function()
 {
+	on.exit({
+		showfile.gds(closeall=TRUE, verbose=FALSE)
+		unlink("tmp.gds", force=TRUE)
+	})
+
+	verbose <- options("test.verbose")$test.verbose
+	if (verbose) cat("\n>>>> test.random_access_2 <<<<\n")
+
 	########  Low Compression Rate (ratio: 85.5%)  ########
 
 	####  cteate a GDS file  ####
@@ -138,14 +151,19 @@ test.random_access_2 <- function()
 
 	# close the file
 	closefn.gds(f)
-
-	# delete the GDS file
-	unlink("tmp.gds")
 }
 
 
 test.random_access_bit1 <- function()
 {
+	on.exit({
+		showfile.gds(closeall=TRUE, verbose=FALSE)
+		unlink("tmp.gds", force=TRUE)
+	})
+
+	verbose <- options("test.verbose")$test.verbose
+	if (verbose) cat("\n>>>> test.random_access_bit1 <<<<\n")
+
 	########  Unable to compress (ratio: >100%)  ########
 
 	####  cteate a GDS file  ####
@@ -204,14 +222,19 @@ test.random_access_bit1 <- function()
 
 	# close the file
 	closefn.gds(f)
-
-	# delete the GDS file
-	unlink("tmp.gds")
 }
 
 
 test.random_access_bit2 <- function()
 {
+	on.exit({
+		showfile.gds(closeall=TRUE, verbose=FALSE)
+		unlink("tmp.gds", force=TRUE)
+	})
+
+	verbose <- options("test.verbose")$test.verbose
+	if (verbose) cat("\n>>>> test.random_access_bit2 <<<<\n")
+
 	########  Median Compression Rate (ratio: ~56%)  ########
 
 	####  cteate a GDS file  ####
@@ -270,14 +293,19 @@ test.random_access_bit2 <- function()
 
 	# close the file
 	closefn.gds(f)
-
-	# delete the GDS file
-	unlink("tmp.gds")
 }
 
 
 test.random_access_bit4 <- function()
 {
+	on.exit({
+		showfile.gds(closeall=TRUE, verbose=FALSE)
+		unlink("tmp.gds", force=TRUE)
+	})
+
+	verbose <- options("test.verbose")$test.verbose
+	if (verbose) cat("\n>>>> test.random_access_bit4 <<<<\n")
+
 	########  Median Compression Rate (ratio: ~56%)  ########
 
 	####  cteate a GDS file  ####
@@ -336,7 +364,4 @@ test.random_access_bit4 <- function()
 
 	# close the file
 	closefn.gds(f)
-
-	# delete the GDS file
-	unlink("tmp.gds")
 }
