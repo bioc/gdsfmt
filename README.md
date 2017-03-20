@@ -25,11 +25,12 @@ Release Version: v1.10.1
 
 [Help Documents](http://zhengxwen.github.io/gdsfmt/release/help/00Index.html)
 
-Development Version: v1.11.4
+Development Version: v1.11.5
 
 [http://www.bioconductor.org/packages/devel/bioc/html/gdsfmt.html](http://www.bioconductor.org/packages/devel/bioc/html/gdsfmt.html)
 
 [Help Documents](http://zhengxwen.github.io/gdsfmt/devel/help/00Index.html)
+
 
 ## Package Vignettes
 
@@ -41,6 +42,8 @@ Development Version: v1.11.4
 ## Citation
 
 Zheng X, Levine D, Shen J, Gogarten SM, Laurie C, Weir BS (2012). A High-performance Computing Toolset for Relatedness and Principal Component Analysis of SNP Data. *Bioinformatics*. [DOI: 10.1093/bioinformatics/bts606](http://dx.doi.org/10.1093/bioinformatics/bts606).
+
+Zheng X, Gogarten S, Lawrence M, Stilp A, Conomos M, Weir BS, Laurie C, Levine D (2017). SeqArray -- A storage-efficient high-performance data format for WGS variant calls. *Bioinformatics*. [DOI: 10.1093/bioinformatics/btx145](http://dx.doi.org/10.1093/bioinformatics/btx145).
 
 
 ## Package Maintainer
@@ -71,7 +74,6 @@ install_github("zhengxwen/gdsfmt")
 The `install_github()` approach requires that you build from source, i.e. `make` and compilers must be installed on your system -- see the [R FAQ](http://cran.r-project.org/faqs.html) for your operating system; you may also need to install dependencies manually.
 
 
-
 ## Copyright Notice
 
 * CoreArray C++ library, LGPL-3 License, 2007-2016, Xiuwen Zheng
@@ -79,7 +81,6 @@ The `install_github()` approach requires that you build from source, i.e. `make`
 * LZ4, BSD 2-clause License, 2011-2016, Yann Collet
 * liblzma, public domain, 2005-2016, Lasse Collin and other xz contributors
 * [README](./inst/COPYRIGHTS)
-
 
 
 ## GDS Command-line Tools
@@ -136,7 +137,6 @@ echo '#!' `which Rscript` '--vanilla' > diffgds
 wget -qO- --no-check-certificate https://raw.githubusercontent.com/zhengxwen/Documents/master/Program/diffgds.R >> diffgds
 chmod +x diffgds
 ```
-
 
 
 ## Examples

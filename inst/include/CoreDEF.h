@@ -43,7 +43,7 @@
  *  If defined, set "COREARRAY_FORCEINLINE = COREARRAY_INLINE"
  *
  *  \subsection no_simd COREARRAY_NO_SIMD
- *  If defined, undefine SSE macros to disable SSE-specific codes
+ *  If defined, undefine SIMD macros to disable SIMD-specific codes
  *
  *  \subsection no_std_in_out COREARRAY_NO_STD_IN_OUT
  *  If defined, remove the codes linked to standard input and output streams
@@ -51,8 +51,20 @@
  *  \subsection using_r USING_R or COREARRAY_USING_R
  *  If defined, the code is indeed being used with R
  *
- *  \subsection COREARRAY_CODE_USING_LOG
+ *  \subsection using_log COREARRAY_CODE_USING_LOG
  *  If defined, the procedure of loading GDS files will be recorded
+ *
+ *  \subsection compression COREARRAY_NO_LZ4
+ *  If defined, no LZ4 compression method
+ *
+ *  \subsection compression COREARRAY_NO_LZMA
+ *  If defined, no xz/lzma compression method
+ *
+ *  \subsection compression COREARRAY_USE_ZLIB_EXT
+ *  If defined, uses the libz head file in the default path (e.g., the include path in the operating system)
+ *
+ *  \subsection compression COREARRAY_USE_LZMA_EXT
+ *  If defined, uses the liblzma head file in the default path (e.g., the include path in the operating system)
  *
 **/
 
@@ -936,7 +948,7 @@
 // ===========================================================================
 // Detecting the endianness (byte order)
 // Reference: http://man7.org/linux/man-pages/man3/endian.3.html
-// Q: APPLE? Windows?
+// Q: Windows?
 // ===========================================================================
 
 #if !defined(COREARRAY_ENDIAN_LITTLE) && !defined(COREARRAY_ENDIAN_BIG) && !defined(COREARRAY_ENDIAN_UNKNOWN)
