@@ -1,7 +1,14 @@
+CHANGES IN VERSION 1.14.1
+-------------------------
+
+    o `cleanup.gds()` allows a file name with a prefix '~' which will be
+      automatically replaced by the home directory
+
+
 CHANGES IN VERSION 1.14.0
 -------------------------
 
-    o tweak error message
+    o tweak error messages in `apply.gdsn()`
 
 
 CHANGES IN VERSION 1.12.0
