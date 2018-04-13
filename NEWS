@@ -1,4 +1,4 @@
-CHANGES IN VERSION 1.15.1
+CHANGES IN VERSION 1.15.1-1.15.2
 -------------------------
 
 UTILITIES
@@ -6,11 +6,25 @@ UTILITIES
     o a new storage name 'single' in `add.gdsn()` for single-precision
       floating numbers
 
+    o improve the efficiency of bit2-unpacking when there are lots of zero
 
-CHANGES IN VERSION 1.13.1
+    o `system.gds()` outputs 'POPCNT' flag if available
+
+    o enable the compression modes "LZMA.ultra", "LZMA.ultra_max",
+      "LZMA_RA.ultra" and "LZMA_RA.ultra_max"
+
+    o show more compression information in `system.gds()`
+
+
+CHANGES IN VERSION 1.14.0-1.14.1
 -------------------------
 
-    o tweak error message
+UTILITIES
+
+    o tweak error messages in `apply.gdsn()`
+
+    o `cleanup.gds()` allows a file name with a prefix '~' which will be
+      automatically replaced by the home directory
 
 
 CHANGES IN VERSION 1.12.0

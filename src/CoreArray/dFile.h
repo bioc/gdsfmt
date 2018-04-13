@@ -8,7 +8,7 @@
 //
 // dFile.h: Functions and classes for CoreArray Genomic Data Structure (GDS)
 //
-// Copyright (C) 2007-2017    Xiuwen Zheng
+// Copyright (C) 2007-2018    Xiuwen Zheng
 //
 // This file is part of CoreArray.
 //
@@ -227,6 +227,10 @@ namespace CoreArray
 		virtual const char *Coder() const = 0;
 		/// get the description of coder
 		virtual const char *Description() const = 0;
+		/// get a string of all coder options split by comma
+		virtual string CoderOptString() const = 0;
+		/// get a string of all ext options split by comma
+		virtual string ExtOptString() const = 0;
 		/// get whether or not Mode is self
 		virtual bool Equal(const char *Mode) const = 0;
 		/// get the coder information with parameters
@@ -267,6 +271,10 @@ namespace CoreArray
 		/// destructor
 		CdPipeMgrItem2();
 
+		/// get a list of options
+		virtual string CoderOptString() const;
+		/// get a string of all ext options split by comma
+		virtual string ExtOptString() const;
 		/// get whether or not Mode is self
 		virtual bool Equal(const char *Mode) const;
 		/// get the coder information with parameters

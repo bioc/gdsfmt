@@ -417,7 +417,7 @@ COREARRAY_DLL_EXPORT SEXP gdsFileSize(SEXP gdsfile)
 **/
 COREARRAY_DLL_EXPORT SEXP gdsTidyUp(SEXP FileName, SEXP Verbose)
 {
-	const char *fn = CHAR(STRING_ELT(FileName, 0));
+	const char *fn = R_ExpandFileName(CHAR(STRING_ELT(FileName, 0)));
 
 	int verbose_flag = Rf_asLogical(Verbose);
 	if (verbose_flag == NA_LOGICAL)
@@ -3087,17 +3087,20 @@ COREARRAY_DLL_EXPORT SEXP gdsSystem()
 
 		// Compression encoder
 		int n = dStreamPipeMgr.RegList().size();
-		SEXP Encoder = PROTECT(NEW_CHARACTER(2*n));
+		SEXP Encoder = PROTECT(NEW_CHARACTER(4*n));
 		nProtect ++;
 		SET_ELEMENT(rv_ans, 6, Encoder);
 		SET_STRING_ELT(nm, 6, mkChar("compression.encoder"));
 		for (int i=0; i < n; i++)
 		{
 			const CdPipeMgrItem *p = dStreamPipeMgr.RegList()[i];
-			SET_STRING_ELT(Encoder, 2*i+0, mkChar(p->Coder()));
-			SET_STRING_ELT(Encoder, 2*i+1, mkChar(p->Description()));
+			SET_STRING_ELT(Encoder, 4*i+0, mkChar(p->Coder()));
+			SET_STRING_ELT(Encoder, 4*i+1, mkChar(p->Description()));
+			string s = p->CoderOptString();
+			SET_STRING_ELT(Encoder, 4*i+2, mkChar(s.c_str()));
+			s = p->ExtOptString();
+			SET_STRING_ELT(Encoder, 4*i+3, mkChar(s.c_str()));
 		}	
-
 
 		// compiler flags
 		vector<string> ss;
@@ -3127,6 +3130,9 @@ COREARRAY_DLL_EXPORT SEXP gdsSystem()
 	#endif
 	#ifdef COREARRAY_SIMD_FMA4
 		ss.push_back("FMA4");
+	#endif
+	#ifdef COREARRAY_POPCNT
+		ss.push_back("POPCNT");
 	#endif
 		SEXP SIMD = PROTECT(NEW_CHARACTER(ss.size()));
 		nProtect ++;
