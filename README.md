@@ -62,8 +62,9 @@ Dr. Xiuwen Zheng ([zhengx@u.washington.edu](zhengx@u.washington.edu))
 
 * Bioconductor repository:
 ```R
-source("http://bioconductor.org/biocLite.R")
-biocLite("gdsfmt")
+if (!requireNamespace("BiocManager", quietly=TRUE))
+    install.packages("BiocManager")
+BiocManager::install("gdsfmt")
 ```
 
 * Development version from Github:
@@ -91,8 +92,9 @@ install.packages("getopt", repos="http://cran.r-project.org")
 install.packages("optparse", repos="http://cran.r-project.org")
 install.packages("crayon", repos="http://cran.r-project.org")
 
-source("http://bioconductor.org/biocLite.R")
-biocLite("gdsfmt")
+if (!requireNamespace("BiocManager", quietly=TRUE))
+    install.packages("BiocManager")
+BiocManager::install("gdsfmt")
 ```
 
 [See More...](https://github.com/zhengxwen/Documents/tree/master/Program)
