@@ -1,3 +1,28 @@
+CHANGES IN VERSION 1.19.1
+-------------------------
+
+UTILITIES
+
+    o optimize the C implementation of 'packedreal8' using a look-up table
+
+NEW FEATURES
+
+    o new data types 'packedreal8u', 'packedreal16u', 'packedreal24u' and
+      'packedreal32u'
+
+BUG FIXES
+
+    o the compression method 'LZ4_RA.max' does not compress data
+
+
+CHANGES IN VERSION 1.18.1
+-------------------------
+
+BUG FIXES
+
+    o the node name should not contain a slash '/'
+
+
 CHANGES IN VERSION 1.18.0
 -------------------------
 
