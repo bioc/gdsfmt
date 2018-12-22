@@ -374,14 +374,13 @@ namespace CoreArray
 
 		void _ChangeLookup()
 		{
-			typename TdTraits<REAL_TYPE>::ElmType I = 0;
 			for (size_t k=0; k < TdTraits<REAL_TYPE>::LookupTableSize; k++)
 			{
+				typename TdTraits<REAL_TYPE>::ElmType I = k;
 				if (I != TdTraits<REAL_TYPE>::MissingValue)
-					_LookupTable[k] = I*fScale + fOffset;
+					_LookupTable[k] = fScale*I + fOffset;
 				else
 					_LookupTable[k] = NaN;
-				I++;
 			}
 		}
 	};
@@ -428,12 +427,8 @@ namespace CoreArray
 		/// read an array from CdAllocator
 		static MEM_TYPE *Read(CdIterator &I, MEM_TYPE *p, ssize_t n)
 		{
-			C_Int8 Buf[NBUF];
-			CdPackedReal<TReal8> *IT =
-				static_cast< CdPackedReal<TReal8>* >(I.Handler);
-			const C_Float64 offset = IT->Offset();
-			const C_Float64 scale = IT->Scale();
-
+			C_UInt8 Buf[NBUF];
+			const double *lookup = static_cast<CdPackedReal8*>(I.Handler)->LookupTable();
 			I.Allocator->SetPosition(I.Ptr);
 			I.Ptr += n;
 			while (n > 0)
@@ -441,11 +436,8 @@ namespace CoreArray
 				ssize_t Cnt = (n >= NBUF) ? NBUF : n;
 				I.Allocator->ReadData(Buf, Cnt);
 				n -= Cnt;
-				for (C_Int8 *s=Buf; Cnt > 0; Cnt--, s++)
-				{
-					*p++ = VAL_CONV_FROM_F64(MEM_TYPE,
-						(*s != C_Int8(0x80)) ? ((*s) * scale + offset) : NaN);
-				}
+				for (C_UInt8 *s=Buf; Cnt > 0; Cnt--)
+					*p++ = VAL_CONV_FROM_F64(MEM_TYPE, lookup[*s++]);
 			}
 			return p;
 		}
@@ -454,12 +446,8 @@ namespace CoreArray
 		static MEM_TYPE *ReadEx(CdIterator &I, MEM_TYPE *p, ssize_t n,
 			const C_BOOL Sel[])
 		{
-			C_Int8 Buf[NBUF];
-			CdPackedReal<TReal8> *IT =
-				static_cast< CdPackedReal<TReal8>* >(I.Handler);
-			const C_Float64 offset = IT->Offset();
-			const C_Float64 scale = IT->Scale();
-
+			C_UInt8 Buf[NBUF];
+			const double *lookup = static_cast<CdPackedReal8*>(I.Handler)->LookupTable();
 			I.Allocator->SetPosition(I.Ptr);
 			I.Ptr += n;
 			while (n > 0)
@@ -467,13 +455,10 @@ namespace CoreArray
 				ssize_t Cnt = (n >= NBUF) ? NBUF : n;
 				I.Allocator->ReadData(Buf, Cnt);
 				n -= Cnt;
-				for (C_Int8 *s=Buf; Cnt > 0; Cnt--, s++)
+				for (C_UInt8 *s=Buf; Cnt > 0; Cnt--, s++)
 				{
 					if (*Sel++)
-					{
-						*p++ = VAL_CONV_FROM_F64(MEM_TYPE,
-							(*s != C_Int8(0x80)) ? ((*s) * scale + offset) : NaN);
-					}
+						*p++ = VAL_CONV_FROM_F64(MEM_TYPE, lookup[*s]);
 				}
 			}
 			return p;
@@ -498,7 +483,7 @@ namespace CoreArray
 					double v = round((VAL_CONV_TO_F64(MEM_TYPE, *p++) - offset) * scale);
 					C_Int8 I = 0x80;
 					if (IsFinite(v) && (-127.5 < v) && (v <= 127.5))
-						I = (C_Int8)v;
+						I = (int)v;
 					*s++ = I;
 				}
 				I.Allocator->WriteData(Buf, Cnt);
@@ -576,7 +561,7 @@ namespace CoreArray
 					double v = round((VAL_CONV_TO_F64(MEM_TYPE, *p++) - offset) * scale);
 					C_UInt8 I = 0xFF;
 					if (IsFinite(v) && (-0.5 < v) && (v <= 254.5))
-						I = (C_UInt8)v;
+						I = (unsigned)v;
 					*s++ = I;
 				}
 				I.Allocator->WriteData(Buf, Cnt);
