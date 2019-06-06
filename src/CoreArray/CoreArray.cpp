@@ -25,6 +25,10 @@
 // License along with CoreArray.
 // If not, see <http://www.gnu.org/licenses/>.
 
+#ifndef COREARRAY_COMPILER_OPTIMIZE_FLAG
+#   define COREARRAY_COMPILER_OPTIMIZE_FLAG  3
+#endif
+
 #include "CoreDEF.h"
 #include "dType.h"
 #include "dTrait.h"
