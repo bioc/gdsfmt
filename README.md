@@ -19,17 +19,11 @@ This package provides a high-level R interface to CoreArray Genomic Data Structu
 
 ## Bioconductor:
 
-Release Version: v1.20.1
+Release Version: v1.22.0
 
 [http://www.bioconductor.org/packages/release/bioc/html/gdsfmt.html](http://www.bioconductor.org/packages/release/bioc/html/gdsfmt.html)
 
-[Help Documents](http://zhengxwen.github.io/gdsfmt/release/help/00Index.html)
-
-Development Version: v1.21.2
-
-[http://www.bioconductor.org/packages/devel/bioc/html/gdsfmt.html](http://www.bioconductor.org/packages/devel/bioc/html/gdsfmt.html)
-
-[Help Documents](http://zhengxwen.github.io/gdsfmt/devel/help/00Index.html)
+[Help Documents](https://rdrr.io/bioc/gdsfmt/man)
 
 
 ## Package Vignettes
@@ -37,7 +31,7 @@ Development Version: v1.21.2
 [http://bioconductor.org/packages/release/bioc/vignettes/gdsfmt/inst/doc/gdsfmt.html](http://bioconductor.org/packages/release/bioc/vignettes/gdsfmt/inst/doc/gdsfmt.html)
 
 
-## Citation
+## Citations
 
 Zheng X, Levine D, Shen J, Gogarten SM, Laurie C, Weir BS (2012). A High-performance Computing Toolset for Relatedness and Principal Component Analysis of SNP Data. *Bioinformatics*. [DOI: 10.1093/bioinformatics/bts606](http://dx.doi.org/10.1093/bioinformatics/bts606).
 
