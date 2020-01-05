@@ -8,7 +8,7 @@
 //
 // dFile.cpp: Functions and classes for CoreArray Genomic Data Structure (GDS)
 //
-// Copyright (C) 2007-2019    Xiuwen Zheng
+// Copyright (C) 2007-2020    Xiuwen Zheng
 //
 // This file is part of CoreArray.
 //
@@ -439,13 +439,10 @@ CdGDSFile *CdGDSObj::GDSFile()
 
 void CdGDSObj::LoadStruct(CdReader &Reader, TdVersion Version)
 {
-	// call load function ::Loading
+	// call the function 'Loading'
 	CdObjMsg::LoadStruct(Reader, Version);
-
-	// load attribute
-	COREARRAY_READER_CALL_SILENT(
-		fAttr.Loading(Reader, Version)
-	);
+	// load attributes
+	COREARRAY_READER_CALL_SILENT(fAttr.Loading(Reader, Version));
 }
 
 void CdGDSObj::SaveStruct(CdWriter &Writer, bool IncludeName)
@@ -458,13 +455,10 @@ void CdGDSObj::SaveStruct(CdWriter &Writer, bool IncludeName)
 		Writer.Storage() << C_UInt16(Version);
 		Writer.WriteClassName(dName());
 	}
-
 	// call save function ::Saving
 	this->Saving(Writer);
-
 	// save attribute
 	fAttr.Saving(Writer);
-
 	// ending ...
 	Writer.EndStruct();
 	fChanged = false;
@@ -527,14 +521,10 @@ void CdGDSObj::RaiseInvalidAssign(const char *ThisClass, CdGDSObj *Source)
 	}
 }
 
-void CdGDSObj::_GDSObjInitProc(CdObjClassMgr &Sender, CdObject *dObj,
-	void *Data)
+void CdGDSObj::_GDSObjInitProc(CdObjClassMgr &Sender, CdObject *Obj, void *Data)
 {
-	if (dynamic_cast<CdGDSObj*>(dObj))
-	{
-		static_cast<CdGDSObj*>(dObj)->fGDSStream =
-			(CdBlockStream*)Data;
-	}
+	if (dynamic_cast<CdGDSObj*>(Obj))
+		static_cast<CdGDSObj*>(Obj)->fGDSStream = (CdBlockStream*)Data;
 }
 
 
@@ -594,7 +584,7 @@ namespace CoreArray
 		}
 		virtual CdStream *FreePipe()
 		{
-			if (fPStream) fPStream->Release();
+			if (fPStream) { fPStream->Release(); fPStream = NULL; }
 			return fStream;
 		}
 	};
@@ -628,7 +618,7 @@ namespace CoreArray
 		}
 		virtual CdStream *FreePipe()
 		{
-			if (fPStream) fPStream->Release();
+			if (fPStream) { fPStream->Release(); fPStream = NULL; }
 			return fStream;
 		}
 	};
@@ -1829,11 +1819,14 @@ CdGDSFolder::TNode &CdGDSFolder::_NameItem(const UTF8String &Name)
 
 void CdGDSFolder::_LoadItem(TNode &I)
 {
+	static const char *ERR_INVALID_GDS_OBJ =
+		"Invalid GDS object (it should be inherited from CdGDSObj).";
+
 	if (I.Obj == NULL)
 	{
 		_CheckGDSStream();
-		CdReader Reader(fGDSStream->Collection()[I.StreamID],
-			&GDSFile()->Log());
+		CdBlockStream *IStream = fGDSStream->Collection()[I.StreamID];
+		CdReader Reader(IStream, &GDSFile()->Log());
 
 		if (I.IsFlagType(CdGDSFolder::TNode::FLAG_TYPE_LABEL))
 		{
@@ -1846,9 +1839,9 @@ void CdGDSFolder::_LoadItem(TNode &I)
 			_INTERNAL::CdObject_LoadStruct(*vObj, Reader, 0x100);
 			Reader.EndStruct();
 
-			vObj->fGDSStream = dynamic_cast<CdBlockStream*>(&Reader.Stream());
 			/// todo: check
-			vObj->fGDSStream->AddRef();
+			vObj->fGDSStream = IStream;
+			IStream->AddRef();
 
 		} else if (I.IsFlagType(CdGDSFolder::TNode::FLAG_TYPE_FOLDER))
 		{
@@ -1861,9 +1854,9 @@ void CdGDSFolder::_LoadItem(TNode &I)
 			vObj->LoadStruct(Reader, COREARRAY_CLASS_VERSION);
 			Reader.EndStruct();
 
-			vObj->fGDSStream = dynamic_cast<CdBlockStream*>(&Reader.Stream());
 			/// todo: check
-			vObj->fGDSStream->AddRef();
+			vObj->fGDSStream = IStream;
+			IStream->AddRef();
 
 		} else if (I.IsFlagType(CdGDSFolder::TNode::FLAG_TYPE_VIRTUAL_FOLDER))
 		{
@@ -1876,9 +1869,9 @@ void CdGDSFolder::_LoadItem(TNode &I)
 			vObj->LoadStruct(Reader, COREARRAY_CLASS_VERSION);
 			Reader.EndStruct();
 
-			vObj->fGDSStream = dynamic_cast<CdBlockStream*>(&Reader.Stream());
 			/// todo: check
-			vObj->fGDSStream->AddRef();
+			vObj->fGDSStream = IStream;
+			IStream->AddRef();
 
 		} else if (I.IsFlagType(CdGDSFolder::TNode::FLAG_TYPE_STREAM))
 		{
@@ -1887,9 +1880,9 @@ void CdGDSFolder::_LoadItem(TNode &I)
 			vObj->fFolder = this;
 			I.Obj = vObj;
 
-			vObj->fGDSStream = dynamic_cast<CdBlockStream*>(&Reader.Stream());
 			/// todo: check
-			vObj->fGDSStream->AddRef();
+			vObj->fGDSStream = IStream;
+			IStream->AddRef();
 
 			Reader.BeginNameSpace();
 			vObj->LoadStruct(Reader, COREARRAY_CLASS_VERSION);
@@ -1900,8 +1893,7 @@ void CdGDSFolder::_LoadItem(TNode &I)
 			CdObjRef *obj = NULL;
 
 			try{
-				obj =
-					fGDSStream->Collection().ClassMgr()->
+				obj = fGDSStream->Collection().ClassMgr()->
 					ToObj(Reader, _GDSObjInitProc, fGDSStream, false);
 			}
 			catch (exception &E)
@@ -1916,13 +1908,11 @@ void CdGDSFolder::_LoadItem(TNode &I)
 			{
 				I.Obj = static_cast<CdGDSObj*>(obj);
 				I.Obj->fFolder = this;
-				I.Obj->fGDSStream = dynamic_cast<CdBlockStream*>(
-					&Reader.Stream());
-				I.Obj->fGDSStream->AddRef();
+				I.Obj->fGDSStream = IStream;
+				IStream->AddRef();
 			} else {
 				if (obj) delete obj;
-				throw ErrGDSObj(
-					"Invalid GDS object (it should be inherited from CdGDSObj).");
+				throw ErrGDSObj(ERR_INVALID_GDS_OBJ);
 			}
 		}
 
@@ -2561,8 +2551,8 @@ void CdGDSUnknown::SaveStruct(CdWriter &Writer, bool IncludeName)
 // =====================================================================
 
 static const char *ERR_GDS_OPEN_MODE = "Invalid open mode in CdGDSFile.";
-static const char *ERR_GDS_PREFIX    = "Invalid prefix of stream!";
-static const char *ERR_GDS_ENTRY     = "Invalid entry point(%d).";
+static const char *ERR_GDS_MAGIC     = "Invalid magic number!";
+static const char *ERR_GDS_ENTRY     = "Invalid entry point(0x%04X).";
 static const char *ERR_GDS_SAVE      = "Should save it to a GDS file first!";
 
 #ifdef COREARRAY_CODE_DEBUG
@@ -2578,8 +2568,7 @@ void CdGDSFile::_Init()
 {
 	fVersion = COREARRAY_FILE_VERSION;
 	fRoot.AddRef();
-	fCodeStart = strlen(GDSFilePrefix()) +
-		sizeof(TdVersion) + GDS_BLOCK_ID_SIZE;
+	fCodeStart = strlen(GDSFilePrefix()) + sizeof(TdVersion) + GDS_BLOCK_ID_SIZE;
 	fReadOnly = false;
 	fLog = new CdLogRecord; fLog->AddRef();
 	fprocess_id = GetCurrentProcessID();
@@ -2630,7 +2619,7 @@ CdGDSFile::~CdGDSFile()
 	if (fLog) fLog->Release();
 }
 
-void CdGDSFile::LoadStream(CdStream *Stream, bool ReadOnly)
+void CdGDSFile::LoadStream(CdStream *Stream, bool ReadOnly, bool AllowError)
 {
 	// Initialize
 	CloseFile();
@@ -2638,19 +2627,19 @@ void CdGDSFile::LoadStream(CdStream *Stream, bool ReadOnly)
 	fReadOnly = ReadOnly;
 
 	// Check the prefix
-	const size_t L = strlen(GDSFilePrefix());
+	const char *prefix = GDSFilePrefix();
+	const size_t L = strlen(prefix);  // should be > 0 always
 	vector<char> buf(L);
 	Stream->ReadData((void*)&buf[0], L);
-	if (memcmp((void*)GDSFilePrefix(), (void*)&buf[0], L) !=0)
-		throw ErrGDSFile(ERR_GDS_PREFIX);
+	if (memcmp((void*)prefix, (void*)&buf[0], L) !=0)
+		throw ErrGDSFile(ERR_GDS_MAGIC);
 
 	// Load Version
 	fVersion = Stream->R8b();
 	fVersion |= Stream->R8b() << 8;
 
 #ifdef COREARRAY_CODE_USING_LOG
-	Log().Add(CdLogRecord::logInfo,
-		"Open a GDS file (File Version, major: %02d, minor: %02d).",
+	Log().Add(CdLogRecord::LOG_INFO, "Open a GDS file (File Version: v%d.%d).",
 		int(fVersion >> 8), int(fVersion & 0xFF));
 #endif
 
@@ -2658,11 +2647,11 @@ void CdGDSFile::LoadStream(CdStream *Stream, bool ReadOnly)
 	TdGDSBlockID Entry;
 	BYTE_LE<CdStream>(Stream) >> Entry;
 
-	// To identify the block stream
-	CdBlockCollection::LoadStream(Stream, ReadOnly);
+	// Block construction
+	CdBlockCollection::LoadStream(Stream, ReadOnly, AllowError, &Log());
 
 #ifdef COREARRAY_CODE_USING_LOG
-	Log().Add(CdLogRecord::logInfo,
+	Log().Add(CdLogRecord::LOG_INFO,
 		"Load all data stream (%d in total) with an entry id (0x%04X).",
 		(int)BlockList().size(), Entry.Get());
 #endif
@@ -2673,8 +2662,7 @@ void CdGDSFile::LoadStream(CdStream *Stream, bool ReadOnly)
 		fRoot.fGDSStream->AddRef();
 
 	#ifdef COREARRAY_CODE_USING_LOG
-		Log().Add(CdLogRecord::logInfo,
-			"Load the root folder from the entry (size: %g).",
+		Log().Add(CdLogRecord::LOG_INFO, "Load the root folder from the entry (size: %g).",
 			(double)fRoot.fGDSStream->Size());
 	#endif
 
@@ -2716,27 +2704,27 @@ void CdGDSFile::SaveStream(CdStream *Stream)
 	fRoot.SaveToBlockStream();
 }
 
-void CdGDSFile::LoadFile(const UTF8String &fn, bool ReadOnly)
+void CdGDSFile::LoadFile(const UTF8String &fn, bool ReadOnly, bool AllowError)
 {
 	TdAutoRef<CdStream> F(new CdFileStream(RawText(fn).c_str(),
 		ReadOnly ? CdFileStream::fmOpenRead : CdFileStream::fmOpenReadWrite));
-	LoadStream(F.get(), ReadOnly);
+	LoadStream(F.get(), ReadOnly, AllowError);
 	fFileName = fn;
 }
 
-void CdGDSFile::LoadFile(const char *fn, bool ReadOnly)
+void CdGDSFile::LoadFile(const char *fn, bool ReadOnly, bool AllowError)
 {
 	TdAutoRef<CdStream> F(new CdFileStream(fn,
 		ReadOnly ? CdFileStream::fmOpenRead : CdFileStream::fmOpenReadWrite));
-	LoadStream(F.get(), ReadOnly);
+	LoadStream(F.get(), ReadOnly, AllowError);
 	fFileName = UTF8Text(fn);
 }
 
-void CdGDSFile::LoadFileFork(const char *fn, bool ReadOnly)
+void CdGDSFile::LoadFileFork(const char *fn, bool ReadOnly, bool AllowError)
 {
 	TdAutoRef<CdStream> F(new CdForkFileStream(fn,
 		ReadOnly ? CdFileStream::fmOpenRead : CdFileStream::fmOpenReadWrite));
-	LoadStream(F.get(), ReadOnly);
+	LoadStream(F.get(), ReadOnly, AllowError);
 	fFileName = UTF8Text(fn);
 }
 
@@ -2813,6 +2801,7 @@ void CdGDSFile::CloseFile()
 		fLog->List().clear();
 		fRoot.Attribute().Clear();
 		fRoot._ClearFolder();
+
 		if (fRoot.fGDSStream)
 		{
 			// todo: check

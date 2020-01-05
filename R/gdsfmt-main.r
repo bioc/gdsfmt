@@ -2,7 +2,7 @@
 #
 # gdsfmt-main.r: R Interface to CoreArray Genomic Data Structure (GDS) Files
 #
-# Copyright (C) 2011-2019    Xiuwen Zheng
+# Copyright (C) 2011-2020    Xiuwen Zheng
 #
 # This is free software: you can redistribute it and/or modify it
 # under the terms of the GNU Lesser General Public License Version 3 as
@@ -48,13 +48,13 @@ createfn.gds <- function(filename, allow.duplicate=FALSE)
 # Open an existing file
 #
 openfn.gds <- function(filename, readonly=TRUE, allow.duplicate=FALSE,
-    allow.fork=FALSE)
+    allow.fork=FALSE, allow.error=FALSE)
 {
     stopifnot(is.character(filename), length(filename)==1L)
 
     filename <- normalizePath(filename, mustWork=FALSE)
     ans <- .Call(gdsOpenGDS, filename, readonly, allow.duplicate,
-        allow.fork)
+        allow.fork, allow.error)
     names(ans) <- c("filename", "id", "root", "readonly")
     ans$filename <- filename
     class(ans) <- "gds.class"
@@ -143,24 +143,25 @@ showfile.gds <- function(closeall=FALSE, verbose=TRUE)
 #############################################################
 # Diagnose the GDS file
 #
-diagnosis.gds <- function(gds)
+diagnosis.gds <- function(gds, log.only=FALSE)
 {
     stopifnot(inherits(gds, "gds.class") | inherits(gds, "gdsn.class"))
+    stopifnot(is.logical(log.only), length(log.only)==1L)
 
     if (inherits(gds, "gds.class"))
     {
-        # call C function
-        rv <- .Call(gdsDiagInfo, gds)
-
-        names(rv) <- c("stream", "log")
-        rv$stream <- as.data.frame(rv$stream, stringsAsFactors=FALSE)
-        colnames(rv$stream) <- c("id", "size", "capacity", "num_chunk", "path")
-
+        # a gds file
+        rv <- .Call(gdsDiagInfo, gds, log.only)
+        if (!isTRUE(log.only))
+        {
+            names(rv) <- c("stream", "log")
+            rv$stream <- as.data.frame(rv$stream, stringsAsFactors=FALSE)
+            colnames(rv$stream) <- c("id", "size", "capacity", "num_chunk", "path")
+        }
     } else {
-        # call C function
+        # a gds node
         rv <- .Call(gdsDiagInfo2, gds)
     }
-
     rv
 }
 

@@ -25,6 +25,17 @@ Release Version: v1.22.0
 
 [Help Documents](https://rdrr.io/bioc/gdsfmt/man)
 
+[News](./NEWS): v1.23.4
+
+NEW FEATURES
+    * new option 'allow.error' in `openfn.gds()` for data recovery
+    * new option 'log.only' in `diagnosis.gds()`
+
+UTILITIES
+    * zlib updated to v1.2.11 from v1.2.8
+    * xz updated to v5.2.4 from v5.2.3
+    * LZ4 updated to v1.9.2 from v1.7.5
+
 
 ## Package Vignettes
 
@@ -69,10 +80,10 @@ The `install_github()` approach requires that you build from source, i.e. `make`
 
 ## Copyright Notice
 
-* CoreArray C++ library, LGPL-3 License, 2007-2019, Xiuwen Zheng
-* zlib, zlib License, 1995-2013, Jean-loup Gailly and Mark Adler
-* LZ4, BSD 2-clause License, 2011-2017, Yann Collet
-* liblzma, public domain, 2005-2017, Lasse Collin and other xz contributors
+* CoreArray C++ library, LGPL-3 License, 2007-2020, Xiuwen Zheng
+* zlib, zlib License, 1995-2017, Jean-loup Gailly and Mark Adler
+* LZ4, BSD 2-clause License, 2011-2019, Yann Collet
+* liblzma, public domain, 2005-2018, Lasse Collin and other xz contributors
 * [README](./inst/COPYRIGHTS)
 
 

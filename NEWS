@@ -1,5 +1,11 @@
-CHANGES IN VERSION 1.23.2
+CHANGES IN VERSION 1.23.4
 -------------------------
+
+NEW FEATURES
+
+    o new option 'allow.error' in `openfn.gds()` for data recovery
+
+    o new option 'log.only' in `diagnosis.gds()`
 
 UTILITIES
 
