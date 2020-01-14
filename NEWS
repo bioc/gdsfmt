@@ -1,3 +1,11 @@
+CHANGES IN VERSION 1.23.5
+-------------------------
+
+NEW FEATURES
+
+    o new C functions `GDS_Node_Unload()` and `GDS_Node_Load()` in R_GDS.h
+
+
 CHANGES IN VERSION 1.23.4
 -------------------------
 
