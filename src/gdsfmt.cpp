@@ -213,7 +213,7 @@ static SEXP GetListElement(SEXP list, const char *str)
 {
 	SEXP elmt = R_NilValue;
 	SEXP names = getAttrib(list, R_NamesSymbol);
-	R_xlen_t n = XLENGTH(list);
+	R_len_t n = Rf_isNull(names) ? 0 : XLENGTH(list);
 	for (R_xlen_t i=0; i < n; i++)
 	{
 		if (strcmp(CHAR(STRING_ELT(names, i)), str) == 0)
@@ -282,6 +282,7 @@ static string fmt_size(double b)
 }
 
 
+extern SEXP new_gdsptr_obj(CdGDSFile *file, SEXP id);
 extern SEXP gdsObjWriteAll(SEXP Node, SEXP Val, SEXP Check);
 extern SEXP gdsObjSetDim(SEXP Node, SEXP DLen, SEXP Permute);
 
@@ -294,9 +295,10 @@ extern SEXP gdsObjSetDim(SEXP Node, SEXP DLen, SEXP Permute);
 /** \param FileName    [in] the file name
  *  \param AllowDup    [in] allow duplicate file
  *  \return
- *    $filename    the file name to be created
- *    $id          ID of GDS file, an integer, internal use
- *    $root        the root of hierachical structure
+ *    $filename    file name
+ *    $id          ID of GDS file, internal use
+ *    $ptr         pointer to GDS file, internal use
+ *    $root        root of hierarchical structure
  *    $readonly	   whether it is read-only or not
 **/
 COREARRAY_DLL_EXPORT SEXP gdsCreateGDS(SEXP FileName, SEXP AllowDup)
@@ -328,11 +330,13 @@ COREARRAY_DLL_EXPORT SEXP gdsCreateGDS(SEXP FileName, SEXP AllowDup)
 		}
 		// create file and return R object
 		CdGDSFile *file = GDS_File_Create(fn);
-		PROTECT(rv_ans = NEW_LIST(4));
+		PROTECT(rv_ans = NEW_LIST(5));
 			SET_ELEMENT(rv_ans, 0, FileName);
-			SET_ELEMENT(rv_ans, 1, ScalarInteger(GetFileIndex(file)));
-			SET_ELEMENT(rv_ans, 2, GDS_R_Obj2SEXP(&(file->Root())));
-			SET_ELEMENT(rv_ans, 3, ScalarLogical(FALSE));
+			SEXP ID = ScalarInteger(GetFileIndex(file));
+			SET_ELEMENT(rv_ans, 1, ID);
+			SET_ELEMENT(rv_ans, 2, new_gdsptr_obj(file, ID));
+			SET_ELEMENT(rv_ans, 3, GDS_R_Obj2SEXP(&(file->Root())));
+			SET_ELEMENT(rv_ans, 4, ScalarLogical(FALSE));
 		UNPROTECT(1);
 	COREARRAY_CATCH
 }
@@ -345,13 +349,14 @@ COREARRAY_DLL_EXPORT SEXP gdsCreateGDS(SEXP FileName, SEXP AllowDup)
  *  \param AllowFork   [in] allow opening in a forked process
  *  \param AllowError  [in] allow errors in the GDS file to recover data
  *  \return
- *    $filename    the file name to be created
+ *    $filename    file name
  *    $id          ID of GDS file, internal use
- *    $root        the root of hierachical structure
+ *    $ptr         pointer to GDS file, internal use
+ *    $root        root of hierarchical structure
  *    $readonly	   whether it is read-only or not
 **/
-COREARRAY_DLL_EXPORT SEXP gdsOpenGDS(SEXP FileName, SEXP ReadOnly, SEXP AllowDup,
-	SEXP AllowFork, SEXP AllowError)
+COREARRAY_DLL_EXPORT SEXP gdsOpenGDS(SEXP FileName, SEXP ReadOnly,
+	SEXP AllowDup, SEXP AllowFork, SEXP AllowError)
 {
 	// filename
 	SEXP fs = STRING_ELT(FileName, 0);
@@ -386,11 +391,13 @@ COREARRAY_DLL_EXPORT SEXP gdsOpenGDS(SEXP FileName, SEXP ReadOnly, SEXP AllowDup
 		}
 		// open file and return R object
 		CdGDSFile *file = GDS_File_Open(fn, readonly, allow_fork, allow_error);
-		PROTECT(rv_ans = NEW_LIST(4));
+		PROTECT(rv_ans = NEW_LIST(5));
 			SET_ELEMENT(rv_ans, 0, FileName);
-			SET_ELEMENT(rv_ans, 1, ScalarInteger(GetFileIndex(file)));
-			SET_ELEMENT(rv_ans, 2, GDS_R_Obj2SEXP(&(file->Root())));
-			SET_ELEMENT(rv_ans, 3, ScalarLogical(readonly));
+			SEXP ID = ScalarInteger(GetFileIndex(file));
+			SET_ELEMENT(rv_ans, 1, ID);
+			SET_ELEMENT(rv_ans, 2, new_gdsptr_obj(file, ID));
+			SET_ELEMENT(rv_ans, 3, GDS_R_Obj2SEXP(&(file->Root())));
+			SET_ELEMENT(rv_ans, 4, ScalarLogical(readonly));
 		UNPROTECT(1);
 	COREARRAY_CATCH
 }
@@ -403,6 +410,10 @@ COREARRAY_DLL_EXPORT SEXP gdsCloseGDS(SEXP gdsfile)
 {
 	COREARRAY_TRY
 		GDS_File_Close(GDS_R_SEXP2File(gdsfile));
+		SEXP gds_id  = GetListElement(gdsfile, "id");
+		INTEGER(gds_id)[0] = -1;
+		SEXP gds_ptr = GetListElement(gdsfile, "ptr");
+		R_SetExternalPtrAddr(gds_ptr, NULL);
 	COREARRAY_CATCH
 }
 
@@ -414,6 +425,18 @@ COREARRAY_DLL_EXPORT SEXP gdsSyncGDS(SEXP gdsfile)
 {
 	COREARRAY_TRY
 		GDS_R_SEXP2File(gdsfile)->SyncFile();
+	COREARRAY_CATCH
+}
+
+
+/// Reopen the GDS file if needed and return TRUE
+/** \param gdsfile     [in] the GDS file object
+**/
+COREARRAY_DLL_EXPORT SEXP gdsReopenGDS(SEXP gdsfile)
+{
+	COREARRAY_TRY
+		C_BOOL rv = GDS_File_Reopen(gdsfile);
+		rv_ans = ScalarLogical(rv ? TRUE : FALSE);
 	COREARRAY_CATCH
 }
 
@@ -467,43 +490,46 @@ COREARRAY_DLL_EXPORT SEXP gdsTidyUp(SEXP FileName, SEXP Verbose)
 
 
 /// Get all handles of opened GDS files
-COREARRAY_DLL_EXPORT SEXP gdsGetConnection()
+COREARRAY_DLL_EXPORT SEXP gdsShowFile(SEXP CloseAll)
 {
+	int closeall = Rf_asLogical(CloseAll);
+	if (closeall == NA_LOGICAL)
+		error("'closeall' must be TRUE or FALSE.");
+
 	COREARRAY_TRY
 
 		int FileCnt = 0;
 		for (int i=0; i < GDSFMT_MAX_NUM_GDS_FILES; i++)
-		{
-			if (PKG_GDS_Files[i])
-				FileCnt ++;
-		}
+			if (PKG_GDS_Files[i]) FileCnt ++;
 
-		int nProtected = 0;
-		PROTECT(rv_ans = NEW_LIST(FileCnt));
-		nProtected ++;
+		rv_ans = PROTECT(NEW_LIST(3));
+		SEXP fn = NEW_CHARACTER(FileCnt);
+		SET_ELEMENT(rv_ans, 0, fn);
+		SEXP rd = NEW_LOGICAL(FileCnt);
+		SET_ELEMENT(rv_ans, 1, rd);
+		SEXP st = NEW_CHARACTER(FileCnt);
+		SET_ELEMENT(rv_ans, 2, st);
 
-		FileCnt = 0;
+		int k = 0;
 		for (int i=0; i < GDSFMT_MAX_NUM_GDS_FILES; i++)
 		{
 			PdGDSFile file = PKG_GDS_Files[i];
 			if (file)
 			{
-				SEXP handle;
-				PROTECT(handle = NEW_LIST(4));
-				nProtected ++;
-				SET_ELEMENT(rv_ans, FileCnt, handle);
-				FileCnt ++;
-
-				SET_ELEMENT(handle, 0,
-					mkString(RawText(file->FileName()).c_str()));
-				SET_ELEMENT(handle, 1, ScalarInteger(i));
-				SET_ELEMENT(handle, 2, GDS_R_Obj2SEXP(&(file->Root())));
-				SET_ELEMENT(handle, 3,
-					ScalarLogical(file->ReadOnly() ? TRUE : FALSE));
+				SET_STRING_ELT(fn, k, mkChar(RawText(file->FileName()).c_str()));
+				LOGICAL(rd)[k] = file->ReadOnly() ? TRUE : FALSE;
+				if (closeall)
+				{
+					SET_STRING_ELT(st, k, mkChar("closed"));
+					GDS_File_Close(file);
+				} else {
+					SET_STRING_ELT(st, k, mkChar("open"));
+				}
+				k ++;
 			}
 		}
 
-		UNPROTECT(nProtected);
+		UNPROTECT(1);
 
 	COREARRAY_CATCH
 }
@@ -4181,7 +4207,7 @@ COREARRAY_DLL_LOCAL void R_Init_RegCallMethods(DllInfo *info)
 	{
 		CALL(gdsCreateGDS, 2),          CALL(gdsOpenGDS, 5),
 		CALL(gdsCloseGDS, 1),           CALL(gdsSyncGDS, 1),
-		CALL(gdsTidyUp, 2),             CALL(gdsGetConnection, 0),
+		CALL(gdsTidyUp, 2),             CALL(gdsShowFile, 1),
 		CALL(gdsDiagInfo, 2),           CALL(gdsDiagInfo2, 1),
 		CALL(gdsFileSize, 1),
 
@@ -4212,6 +4238,7 @@ COREARRAY_DLL_LOCAL void R_Init_RegCallMethods(DllInfo *info)
 		CALL(gdsIsElement, 2),          CALL(gdsLastErrGDS, 0),
 		CALL(gdsSystem, 0),             CALL(gdsDigest, 3),
 		CALL(gdsFmtSize, 1),            CALL(gdsSummary, 1),
+		CALL(gdsReopenGDS, 1),
 
 		{ NULL, NULL, 0 }
 	};
