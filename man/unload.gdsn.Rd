@@ -29,11 +29,12 @@ f <- createfn.gds("test.gds")
 node <- add.gdsn(f, "val", 1:1000)
 node
 
-## dontrun
-## unload.gdsn(node)
-## node  # Error: Invalid GDS node object (it was unloaded or deleted).
+\dontrun{
+unload.gdsn(node)
+node  # Error: Invalid GDS node object (it was unloaded or deleted).
+}
 
-# index.gdsn(f, "val")
+index.gdsn(f, "val")
 
 # close the GDS file
 closefn.gds(f)
