@@ -231,11 +231,10 @@ getfolder.gdsn <- function(node)
 objdesp.gdsn <- function(node)
 {
     stopifnot(inherits(node, "gdsn.class"))
-
     ans <- .Call(gdsNodeObjDesp, node)
     names(ans) <- c("name", "fullname", "storage", "trait", "type",
-        "is.array", "dim", "encoder", "compress", "cpratio", "size",
-        "good", "hidden", "message", "param")
+        "is.array", "is.sparse", "dim", "encoder", "compress",
+        "cpratio", "size", "good", "hidden", "message", "param")
     attr(ans$type, "levels") <- c("Label", "Folder", "VFolder", "Raw",
         "Integer", "Factor", "Logical", "Real", "String", "Unknown")
     attr(ans$type, "class") <- "factor"
@@ -1234,6 +1233,16 @@ summarize.gdsn <- function(node)
 }
 
 
+#############################################################
+# Get whether it is a sparse array or not
+#
+is.sparse.gdsn <- function(node)
+{
+    stopifnot(inherits(node, "gdsn.class"))
+    .Call(gdsIsSparse, node)
+}
+
+
 
 ##############################################################################
 # Error function
@@ -1266,7 +1275,8 @@ system.gds <- function()
 
     rv$options <- list(
         gds.crayon = getOption("gds.crayon", NULL),
-        gds.parallel = getOption("gds.parallel", NULL)
+        gds.parallel = getOption("gds.parallel", NULL),
+        gds.verbose = getOption("gds.verbose", FALSE)
     )
 
     rv
@@ -1280,13 +1290,8 @@ system.gds <- function()
 
 .crayon <- function()
 {
-    crayon.flag <- getOption("gds.crayon", TRUE)
-    if (!is.logical(crayon.flag))
-        crayon.flag <- TRUE
-    crayon.flag <- crayon.flag[1L]
-    if (is.na(crayon.flag))
-        crayon.flag <- FALSE
-    crayon.flag && requireNamespace("crayon", quietly=TRUE)
+    isTRUE(getOption("gds.crayon", TRUE)) &&
+        requireNamespace("crayon", quietly=TRUE)
 }
 
 print.gds.class <- function(x, path="", show=TRUE, ...)
