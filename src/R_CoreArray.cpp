@@ -8,7 +8,7 @@
 //
 // R_CoreArray.cpp: Export the C routines of CoreArray library
 //
-// Copyright (C) 2014-2020    Xiuwen Zheng
+// Copyright (C) 2014-2021    Xiuwen Zheng
 //
 // gdsfmt is free software: you can redistribute it and/or modify it
 // under the terms of the GNU Lesser General Public License Version 3 as
@@ -27,7 +27,7 @@
  *	\file     R_CoreArray.cpp
  *	\author   Xiuwen Zheng [zhengx@u.washington.edu]
  *	\version  1.0
- *	\date     2014 - 2020
+ *	\date     2014 - 2021
  *	\brief    Export the C routines of CoreArray library
  *	\details
 **/
@@ -147,6 +147,7 @@ static const char *ERR_WRITE_ONLY =
 static const UTF8String STR_LOGICAL = "R.logical";
 static const UTF8String STR_CLASS = "R.class";
 static const UTF8String STR_LEVELS = "R.levels";
+static const UTF8String STR_FACTOR = "factor";
 
 
 /// get the list element named str, or return NULL
@@ -419,9 +420,42 @@ COREARRAY_DLL_EXPORT C_BOOL GDS_R_Is_Factor(PdGDSObj Obj)
 	if (Obj->Attribute().HasName(STR_CLASS) &&
 		Obj->Attribute().HasName(STR_LEVELS))
 	{
-		return (Obj->Attribute()[STR_CLASS].GetStr8() == "factor");
+		return (Obj->Attribute()[STR_CLASS].GetStr8() == STR_FACTOR);
 	} else
 		return false;
+}
+
+
+/// return 1 used in UNPROTECT and set levels in 'Val' if Obj is a factor in R
+/// otherwise return 0, assuming Obj is a factor variable
+static int GDS_R_Set_Factor(PdGDSObj Obj, SEXP Val)
+{
+	int nProtected = 0;
+	CdObjAttr &Attr = Obj->Attribute();
+	if (Attr[STR_LEVELS].IsArray())
+	{
+		const CdAny *p = Attr[STR_LEVELS].GetArray();
+		C_UInt32 L = Attr[STR_LEVELS].GetArrayLength();
+		SEXP levels = PROTECT(NEW_CHARACTER(L));
+		nProtected ++;
+		for (C_UInt32 i=0; i < L; i++)
+		{
+			UTF8String s = p[i].GetStr8();
+			SET_STRING_ELT(levels, i, mkCharLenCE(&s[0], s.size(), CE_UTF8));
+		}
+		SET_LEVELS(Val, levels);
+		SET_CLASS(Val, mkString("factor"));
+	} else if (Attr[STR_LEVELS].IsString())
+	{
+		SEXP levels = PROTECT(NEW_CHARACTER(1));
+		nProtected ++;
+		UTF8String s = Attr[STR_LEVELS].GetStr8();
+		SET_STRING_ELT(levels, 0, mkCharLenCE(&s[0], s.size(), CE_UTF8));
+		SET_LEVELS(Val, levels);
+		SET_CLASS(Val, mkString("factor"));
+	}
+	// output
+	return nProtected;
 }
 
 /// return 1 used in UNPROTECT and set levels in 'Val' if Obj is a factor in R
@@ -429,47 +463,31 @@ COREARRAY_DLL_EXPORT C_BOOL GDS_R_Is_Factor(PdGDSObj Obj)
 COREARRAY_DLL_EXPORT int GDS_R_Set_IfFactor(PdGDSObj Obj, SEXP Val)
 {
 	int nProtected = 0;
-
-	if (Obj->Attribute().HasName(STR_CLASS) &&
-		Obj->Attribute().HasName(STR_LEVELS))
+	CdObjAttr &Attr = Obj->Attribute();
+	if (Attr.HasName(STR_CLASS) && Attr.HasName(STR_LEVELS))
 	{
-		if (Obj->Attribute()[STR_CLASS].GetStr8() == "factor")
-		{
-			if (Obj->Attribute()[STR_LEVELS].IsArray())
-			{
-				const CdAny *p =
-					Obj->Attribute()[STR_LEVELS].GetArray();
-				C_UInt32 L =
-					Obj->Attribute()[STR_LEVELS].GetArrayLength();
-
-				SEXP levels;
-				PROTECT(levels = NEW_CHARACTER(L));
-				nProtected ++;
-				for (C_UInt32 i=0; i < L; i++)
-				{
-					UTF8String s = p[i].GetStr8();
-					SET_STRING_ELT(levels, i, mkCharLenCE(&s[0], s.size(), CE_UTF8));
-				}
-
-				SET_LEVELS(Val, levels);
-				SET_CLASS(Val, mkString("factor"));
-
-			} else if (Obj->Attribute()[STR_LEVELS].IsString())
-			{
-				SEXP levels;
-				PROTECT(levels = NEW_CHARACTER(1));
-				nProtected ++;
-				UTF8String s = Obj->Attribute()[STR_LEVELS].GetStr8();
-				SET_STRING_ELT(levels, 0, mkCharLenCE(&s[0], s.size(), CE_UTF8));
-				SET_LEVELS(Val, levels);
-				SET_CLASS(Val, mkString("factor"));
-			}
-		}
+		if (Attr[STR_CLASS].GetStr8() == STR_FACTOR)
+			nProtected = GDS_R_Set_Factor(Obj, Val);
 	}
-
 	// output
 	return nProtected;
 }
+
+/// return R type for logical and factor
+COREARRAY_DLL_EXPORT int GDS_R_Is_ExtType(PdGDSObj Obj)
+{
+	CdObjAttr &Attr = Obj->Attribute();
+	if (Attr.HasName(STR_LOGICAL))
+	{
+		return GDS_R_ExtType_Logical;
+	} else if (Attr.HasName(STR_CLASS) && Attr.HasName(STR_LEVELS))
+	{
+		if (Attr[STR_CLASS].GetStr8() == STR_FACTOR)
+			return GDS_R_ExtType_Factor;
+	}
+	return 0;
+}
+
 
 /// return an R data object from a GDS object, allowing raw-type data
 COREARRAY_DLL_EXPORT SEXP GDS_R_Array_Read(PdAbstractArray Obj,
@@ -540,7 +558,8 @@ COREARRAY_DLL_EXPORT SEXP GDS_R_Array_Read(PdAbstractArray Obj,
 			enum C_SVType SV;
 			if (COREARRAY_SV_INTEGER(Obj->SVType()))
 			{
-				if (GDS_R_Is_Logical(Obj))
+				int ExtType = GDS_R_Is_ExtType(Obj);
+				if (ExtType == GDS_R_ExtType_Logical)
 				{
 					PROTECT(rv_ans = NEW_LOGICAL(TotalCount));
 					buffer = LOGICAL(rv_ans);
@@ -548,7 +567,7 @@ COREARRAY_DLL_EXPORT SEXP GDS_R_Array_Read(PdAbstractArray Obj,
 				} else {
 					bool use_raw = false;
 					if (UseMode & GDS_R_READ_ALLOW_RAW_TYPE)
-						use_raw = (Obj->BitOf() <= 8);
+						use_raw = (Obj->BitOf() <= 8) && ExtType==0;
 					if (use_raw)
 					{
 						PROTECT(rv_ans = NEW_RAW(TotalCount));
@@ -556,7 +575,8 @@ COREARRAY_DLL_EXPORT SEXP GDS_R_Array_Read(PdAbstractArray Obj,
 						SV = svInt8;
 					} else {
 						PROTECT(rv_ans = NEW_INTEGER(TotalCount));
-						nProtected += GDS_R_Set_IfFactor(Obj, rv_ans);
+						if (ExtType == GDS_R_ExtType_Factor)
+							nProtected += GDS_R_Set_Factor(Obj, rv_ans);
 						buffer = INTEGER(rv_ans);
 						SV = svInt32;
 					}
@@ -608,12 +628,22 @@ COREARRAY_DLL_EXPORT SEXP GDS_R_Array_Read(PdAbstractArray Obj,
 		} else {
 			if (COREARRAY_SV_INTEGER(Obj->SVType()))
 			{
-				if (GDS_R_Is_Logical(Obj))
+				int ExtType = GDS_R_Is_ExtType(Obj);
+				if (ExtType == GDS_R_ExtType_Logical)
 				{
 					PROTECT(rv_ans = NEW_LOGICAL(0));
 				} else {
-					PROTECT(rv_ans = NEW_INTEGER(0));
-					nProtected += GDS_R_Set_IfFactor(Obj, rv_ans);
+					bool use_raw = false;
+					if (UseMode & GDS_R_READ_ALLOW_RAW_TYPE)
+						use_raw = (Obj->BitOf() <= 8) && ExtType==0;
+					if (use_raw)
+					{
+						PROTECT(rv_ans = NEW_RAW(0));
+					} else {
+						PROTECT(rv_ans = NEW_INTEGER(0));
+						if (ExtType == GDS_R_ExtType_Factor)
+							nProtected += GDS_R_Set_Factor(Obj, rv_ans);
+					}
 				}
 			} else if (COREARRAY_SV_FLOAT(Obj->SVType()))
 			{
@@ -713,7 +743,8 @@ COREARRAY_DLL_EXPORT void GDS_R_Apply(int Num, PdAbstractArray ObjList[],
 		if (COREARRAY_SV_INTEGER(SVType[i]))
 		{
 			enum C_SVType SV = svInt32;
-			if (!GDS_R_Is_Logical(ObjList[i]))
+			int ExtType = GDS_R_Is_ExtType(ObjList[i]);
+			if (ExtType == 0)
 			{
 				if (UseMode & GDS_R_READ_ALLOW_RAW_TYPE)
 					if (BitOf[i] <= 8) SV = svInt8;
@@ -766,23 +797,25 @@ COREARRAY_DLL_EXPORT void GDS_R_Apply(int Num, PdAbstractArray ObjList[],
 		SEXP tmp;
 		if (COREARRAY_SV_INTEGER(SVType[i]))
 		{
-			if (GDS_R_Is_Logical(ObjList[i]))
+			int ExtType = GDS_R_Is_ExtType(ObjList[i]);
+			if (ExtType == GDS_R_ExtType_Logical)
 			{
 				PROTECT(tmp = NEW_LOGICAL(Array[i].MarginCount()));
-				BufPtr[i] = INTEGER(tmp);
+				BufPtr[i] = LOGICAL(tmp);
 			} else {
 				bool use_raw = false;
 				if (UseMode & GDS_R_READ_ALLOW_RAW_TYPE)
-					use_raw = (BitOf[i] <= 8);
+					use_raw = (ObjList[i]->BitOf() <= 8) && ExtType==0;
 				if (use_raw)
 				{
 					PROTECT(tmp = NEW_RAW(Array[i].MarginCount()));
 					BufPtr[i] = RAW(tmp);
 				} else {
 					PROTECT(tmp = NEW_INTEGER(Array[i].MarginCount()));
+					if (ExtType == GDS_R_ExtType_Factor)
+						nProtected += GDS_R_Set_Factor(ObjList[i], tmp);
 					BufPtr[i] = INTEGER(tmp);
 				}
-				nProtected += GDS_R_Set_IfFactor(ObjList[i], tmp);
 			}
 			nProtected ++;
 		} else if (COREARRAY_SV_FLOAT(SVType[i]))
@@ -1837,6 +1870,7 @@ void R_init_gdsfmt(DllInfo *info)
 	REG(GDS_R_Obj_SEXP2SEXP);
 	REG(GDS_R_Is_Logical);
 	REG(GDS_R_Is_Factor);
+	REG(GDS_R_Is_ExtType);
 	REG(GDS_R_Set_IfFactor);
 	REG(GDS_R_Array_Read);
 	REG(GDS_R_Apply);
