@@ -8,7 +8,7 @@
 //
 // R_GDS.h: C interface to gdsfmt dynamic library
 //
-// Copyright (C) 2014-2021    Xiuwen Zheng
+// Copyright (C) 2014-2022    Xiuwen Zheng
 //
 // This file is part of CoreArray.
 //
@@ -29,7 +29,7 @@
  *	\file     R_GDS.h
  *	\author   Xiuwen Zheng [zhengxwen@gmail.com]
  *	\version  1.0
- *	\date     2014 - 2021
+ *	\date     2014 - 2022
  *	\brief    C interface to gdsfmt dynamic library
  *	\details
 **/
@@ -71,8 +71,8 @@ extern "C" {
 
 	// ==================================================================
 
-	/// Version of R package gdsfmt: v1.28.0
-	#define GDSFMT_R_VERSION       0x011C00
+	/// Version of R package gdsfmt: v1.31.1
+	#define GDSFMT_R_VERSION       0x011F01
 
 
 	// [[ ********
@@ -409,6 +409,9 @@ extern "C" {
 	/// create a dgCMatrix R object, length(x)=length(i)=n_x, length(p)=ncol+1
 	extern SEXP GDS_New_SpCMatrix(const double *x, const int *i, const int *p,
 		int n_x, int nrow, int ncol);
+
+	/// create a dgCMatrix R object using x, i & p (requiring >= v1.31.1)
+	extern SEXP GDS_New_SpCMatrix2(SEXP x, SEXP i, SEXP p, int nrow, int ncol);
 
 
 

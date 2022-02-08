@@ -1,3 +1,19 @@
+CHANGES IN VERSION 1.31.1
+-------------------------
+
+UTILITIES
+
+    o optimize using the utilities of the Matrix package for sparse matrices
+
+
+CHANGES IN VERSION 1.28.1
+-------------------------
+
+UTILITIES
+
+    o update according to gcc-11
+
+
 CHANGES IN VERSION 1.28.0
 -------------------------
 
