@@ -2,7 +2,7 @@
 #
 # gdsfmt-main.r: R Interface to CoreArray Genomic Data Structure (GDS) Files
 #
-# Copyright (C) 2011-2020    Xiuwen Zheng
+# Copyright (C) 2011-2023    Xiuwen Zheng
 #
 # This is free software: you can redistribute it and/or modify it
 # under the terms of the GNU Lesser General Public License Version 3 as
@@ -1311,7 +1311,7 @@ print.gds.class <- function(x, path="", show=TRUE, ...)
     if (.crayon())
     {
         s <- paste0(crayon::inverse("File:"), " ", x$filename, " ",
-            crayon::blurred(paste0("(", .pretty_dsize(size), ")")), "\n")
+            crayon::silver(paste0("(", .pretty_dsize(size), ")")), "\n")
     } else {
         s <- paste0("File: ", x$filename, " (", .pretty_dsize(size), ")\n")
     }
@@ -1355,7 +1355,7 @@ print.gdsn.class <- function(x, expand=TRUE, all=FALSE, nmax=Inf, depth=Inf,
     {
         BOLD <- `c`
         UNDERLINE <- crayon::silver
-        BLURRED <- crayon::blurred
+        BLURRED <- crayon::silver
         WARN <- crayon::magenta
     } else {
         BOLD <- UNDERLINE <- BLURRED <- WARN <- `c`
