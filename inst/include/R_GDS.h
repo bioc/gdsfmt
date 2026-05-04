@@ -8,7 +8,7 @@
 //
 // R_GDS.h: C interface to gdsfmt dynamic library
 //
-// Copyright (C) 2014-2024    Xiuwen Zheng
+// Copyright (C) 2014-2026    Xiuwen Zheng
 //
 // This file is part of CoreArray.
 //
@@ -29,7 +29,7 @@
  *	\file     R_GDS.h
  *	\author   Xiuwen Zheng [zhengxwen@gmail.com]
  *	\version  1.0
- *	\date     2014 - 2024
+ *	\date     2014 - 2026
  *	\brief    C interface to gdsfmt dynamic library
  *	\details
 **/
@@ -73,8 +73,8 @@ extern "C" {
 
 	// ==================================================================
 
-	/// Version of R package gdsfmt: v1.44.0
-	#define GDSFMT_R_VERSION       0x012C00
+	/// Version of R package gdsfmt: v1.49.1
+	#define GDSFMT_R_VERSION       0x013101
 
 
 	// [[ ********
@@ -145,8 +145,8 @@ extern "C" {
 	// R objects
 
 	// return from GDS_R_Is_ExtType (requiring >= v1.27.5)
-	const int GDS_R_ExtType_Logical = 1;
-	const int GDS_R_ExtType_Factor  = 2;
+	#define GDS_R_ExtType_Logical  1
+	#define GDS_R_ExtType_Factor   2
 
 	/// convert "SEXP  --> (CdGDSFile*)"
 	extern PdGDSFile GDS_R_SEXP2File(SEXP File);
@@ -158,6 +158,9 @@ extern "C" {
 	extern SEXP GDS_R_Obj2SEXP(PdGDSObj Obj);
 	/// convert "SEXP (ObjSrc)  -->  SEXP (ObjDst)", (requiring >= v1.5.8)
 	extern void GDS_R_Obj_SEXP2SEXP(SEXP ObjDst, SEXP ObjSrc);
+	/// build a gds.class R list from PdGDSFile (requiring >= v1.49.1)
+	extern SEXP GDS_R_MakeFileObj(PdGDSFile file, const char *filename,
+		C_BOOL readonly);
 	/// return true, if Obj is a logical object in R
 	extern C_BOOL GDS_R_Is_Logical(PdGDSObj Obj);
 	/// return true, if Obj is a factor variable
@@ -189,11 +192,25 @@ extern "C" {
 	// ==================================================================
 	// File structure
 
+	/// callback function types for custom streams (requiring >= v1.49.1)
+	typedef ssize_t (*TdCbStreamRead)(void *user_data, void *buffer, ssize_t count);
+	typedef ssize_t (*TdCbStreamWrite)(void *user_data, const void *buffer, ssize_t count);
+	typedef C_Int64 (*TdCbStreamSeek)(void *user_data, C_Int64 offset, int origin);
+	typedef C_Int64 (*TdCbStreamGetSize)(void *user_data);
+	typedef void    (*TdCbStreamSetSize)(void *user_data, C_Int64 new_size);
+	typedef void    (*TdCbStreamClose)(void *user_data);
+
 	/// create a GDS file
 	extern PdGDSFile GDS_File_Create(const char *FileName);
 	/// open an existing GDS file (the argument 'AllowError' requires >= 1.23.4)
 	extern PdGDSFile GDS_File_Open(const char *FileName, C_BOOL ReadOnly,
 		C_BOOL ForkSupport, C_BOOL AllowError);
+	/// open GDS file via external callback stream (requiring >= v1.49.1)
+	extern PdGDSFile GDS_File_Open_Callback(void *user_data,
+		TdCbStreamRead read_fn, TdCbStreamWrite write_fn,
+		TdCbStreamSeek seek_fn, TdCbStreamGetSize getsize_fn,
+		TdCbStreamSetSize setsize_fn, TdCbStreamClose close_fn,
+		C_BOOL ReadOnly, C_BOOL AllowError);
 	/// close the GDS file
 	extern void GDS_File_Close(PdGDSFile File);
 	/// synchronize the GDS file

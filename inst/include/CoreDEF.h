@@ -8,7 +8,7 @@
 //
 // CoreDEF.h: CoreArray library global macro
 //
-// Copyright (C) 2007-2022    Xiuwen Zheng
+// Copyright (C) 2007-2026    Xiuwen Zheng
 //
 // This file is part of CoreArray.
 //
@@ -29,7 +29,7 @@
  *	\file     CoreDEF.h
  *	\author   Xiuwen Zheng [zhengxwen@gmail.com]
  *	\version  1.0
- *	\date     2007-2020
+ *	\date     2007-2026
  *	\brief    CoreArray library global macro
  *	\details
 **/
@@ -336,7 +336,7 @@
 
 
 // ===========================================================================
-// C++ Version
+// C++ Versions
 // ===========================================================================
 
 #ifdef __cplusplus
@@ -352,6 +352,12 @@
 #   endif
 #   if __cplusplus >= 202002L
 #       define COREARRAY_CPP_V20
+#   endif
+#   if __cplusplus >= 202302L
+#       define COREARRAY_CPP_V23
+#   endif
+#   if __cplusplus >= 202612L
+#       define COREARRAY_CPP_V26
 #   endif
 #endif
 
@@ -628,6 +634,13 @@
 #   define COREARRAY_LZCNT
 #endif
 
+#if defined(__aarch64__) && defined(__ARM_NEON)
+#   define COREARRAY_SIMD_NEON
+#   ifndef COREARRAY_PREDEFINED_SIMD
+#       define COREARRAY_PREDEFINED_SIMD
+#   endif
+#endif
+
 
 #ifdef COREARRAY_SIMD_ATTR_ALIGN
 #   undef COREARRAY_SIMD_ATTR_ALIGN
@@ -637,7 +650,7 @@
 #   define COREARRAY_SIMD_ATTR_ALIGN    __attribute__((aligned(64)))
 #elif defined(__AVX__)
 #   define COREARRAY_SIMD_ATTR_ALIGN    __attribute__((aligned(32)))
-#elif defined(__SSE__)
+#elif defined(__SSE__) || defined(COREARRAY_SIMD_NEON)
 #   define COREARRAY_SIMD_ATTR_ALIGN    __attribute__((aligned(16)))
 #else
 #   define COREARRAY_SIMD_ATTR_ALIGN
@@ -662,6 +675,7 @@
 #       undef COREARRAY_SIMD_AVX512VL
 #       undef COREARRAY_SIMD_FMA
 #       undef COREARRAY_SIMD_FMA4
+#       undef COREARRAY_SIMD_NEON
 #   endif
 #endif
 
@@ -690,7 +704,7 @@
 #   if defined(COREARRAY_PLATFORM_UNIX)
 #
 #       if defined(COREARRAY_PLATFORM_MACOS)
-#           if defined(__i386__) || defined(__x86_64__) || defined(__arm__)
+#           if defined(__i386__) || defined(__x86_64__) || defined(__arm__) || defined(__aarch64__)
 #               define COREARRAY_ENDIAN_LITTLE
 #           elif defined(__ppc__) || defined(__ppc64__)
 #               define COREARRAY_ENDIAN_BIG

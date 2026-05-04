@@ -180,6 +180,45 @@ namespace CoreArray
 	};
 
 
+	// =====================================================================
+	// Callback stream (for external backends like cloud storage)
+	// =====================================================================
+
+	/// Function pointer types for callback stream
+	typedef ssize_t (*TdCbStreamRead)(void *user_data, void *buffer, ssize_t count);
+	typedef ssize_t (*TdCbStreamWrite)(void *user_data, const void *buffer, ssize_t count);
+	typedef C_Int64 (*TdCbStreamSeek)(void *user_data, C_Int64 offset, int origin);
+	typedef C_Int64 (*TdCbStreamGetSize)(void *user_data);
+	typedef void    (*TdCbStreamSetSize)(void *user_data, C_Int64 new_size);
+	typedef void    (*TdCbStreamClose)(void *user_data);
+
+	/// Stream backed by external callback functions
+	class COREARRAY_DLL_DEFAULT CdCallbackStream: public CdStream
+	{
+	public:
+		CdCallbackStream(TdCbStreamRead read_fn, TdCbStreamWrite write_fn,
+			TdCbStreamSeek seek_fn, TdCbStreamGetSize getsize_fn,
+			TdCbStreamSetSize setsize_fn, TdCbStreamClose close_fn,
+			void *user_data);
+		virtual ~CdCallbackStream();
+
+		virtual ssize_t Read(void *Buffer, ssize_t Count);
+		virtual ssize_t Write(const void *Buffer, ssize_t Count);
+		virtual SIZE64 Seek(SIZE64 Offset, TdSysSeekOrg Origin);
+		virtual SIZE64 GetSize();
+		virtual void SetSize(SIZE64 NewSize);
+
+	protected:
+		TdCbStreamRead fReadFn;
+		TdCbStreamWrite fWriteFn;
+		TdCbStreamSeek fSeekFn;
+		TdCbStreamGetSize fGetSizeFn;
+		TdCbStreamSetSize fSetSizeFn;
+		TdCbStreamClose fCloseFn;
+		void *fUserData;
+	};
+
+
 
 	// =====================================================================
 	// Standard input and output
