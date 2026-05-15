@@ -84,6 +84,14 @@ COREARRAY_DLL_LOCAL void GDS_R_Obj_SEXP2SEXP(SEXP ObjDst, SEXP ObjSrc)
 	(*func_R_Obj_SEXP2SEXP)(ObjDst, ObjSrc);
 }
 
+typedef SEXP (*Type_R_MakeFileObj)(PdGDSFile, const char *, C_BOOL);
+static Type_R_MakeFileObj func_R_MakeFileObj = NULL;
+COREARRAY_DLL_LOCAL SEXP GDS_R_MakeFileObj(PdGDSFile file,
+	const char *filename, C_BOOL readonly)
+{
+	return (*func_R_MakeFileObj)(file, filename, readonly);
+}
+
 typedef C_BOOL (*Type_R_Is_Logical)(PdGDSObj);
 static Type_R_Is_Logical func_R_Is_Logical = NULL;
 COREARRAY_DLL_LOCAL C_BOOL GDS_R_Is_Logical(PdGDSObj Obj)
@@ -179,6 +187,20 @@ COREARRAY_DLL_LOCAL PdGDSFile GDS_File_Open(const char *FileName, C_BOOL ReadOnl
 	C_BOOL ForkSupport, C_BOOL AllowError)
 {
 	return (*func_File_Open)(FileName, ReadOnly, ForkSupport, AllowError);
+}
+
+typedef PdGDSFile (*Type_File_Open_Callback)(void *,
+	TdCbStreamRead, TdCbStreamWrite, TdCbStreamSeek, TdCbStreamGetSize,
+	TdCbStreamSetSize, TdCbStreamClose, C_BOOL, C_BOOL);
+static Type_File_Open_Callback func_File_Open_Callback = NULL;
+COREARRAY_DLL_LOCAL PdGDSFile GDS_File_Open_Callback(void *user_data,
+	TdCbStreamRead read_fn, TdCbStreamWrite write_fn,
+	TdCbStreamSeek seek_fn, TdCbStreamGetSize getsize_fn,
+	TdCbStreamSetSize setsize_fn, TdCbStreamClose close_fn,
+	C_BOOL ReadOnly, C_BOOL AllowError)
+{
+	return (*func_File_Open_Callback)(user_data, read_fn, write_fn, seek_fn,
+		getsize_fn, setsize_fn, close_fn, ReadOnly, AllowError);
 }
 
 typedef void (*Type_File_Close)(PdGDSFile);
@@ -713,6 +735,7 @@ void Init_GDS_Routines(void)
 	LOAD(func_R_SEXP2Obj, "GDS_R_SEXP2Obj");
 	LOAD(func_R_Obj2SEXP, "GDS_R_Obj2SEXP");
 	LOAD(func_R_Obj_SEXP2SEXP, "GDS_R_Obj_SEXP2SEXP");
+	LOAD(func_R_MakeFileObj, "GDS_R_MakeFileObj");
 	LOAD(func_R_Is_Logical, "GDS_R_Is_Logical");
 	LOAD(func_R_Is_Factor, "GDS_R_Is_Factor");
 	LOAD(func_R_Is_ExtType, "GDS_R_Is_ExtType");
@@ -726,6 +749,7 @@ void Init_GDS_Routines(void)
 	// File structure
 	LOAD(func_File_Create, "GDS_File_Create");
 	LOAD(func_File_Open, "GDS_File_Open");
+	LOAD(func_File_Open_Callback, "GDS_File_Open_Callback");
 	LOAD(func_File_Close, "GDS_File_Close");
 	LOAD(func_File_Sync, "GDS_File_Sync");
 	LOAD(func_File_Reopen, "GDS_File_Reopen");

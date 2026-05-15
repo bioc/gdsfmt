@@ -1,4 +1,4 @@
-# Load the shared object
+# Dynamically load the compiled C/C++ shared library
 useDynLib(gdsfmt,
     gdsCreateGDS, gdsOpenGDS, gdsCloseGDS, gdsSyncGDS, gdsTidyUp,
     gdsShowFile, gdsDiagInfo, gdsDiagInfo2, gdsNodeChildCnt, gdsNodeName,
@@ -30,8 +30,8 @@ exportMethods(show)
 
 # Import
 import(methods)
-importFrom("stats", "runif")
-importFrom("utils", "memory.size", "write.table")
+importFrom(stats, runif)
+importFrom(utils, memory.size, write.table)
 
 # Registering S3 methods
 S3method(print, gds.class)

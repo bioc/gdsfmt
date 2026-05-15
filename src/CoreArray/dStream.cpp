@@ -306,6 +306,68 @@ void *CdMemoryStream::BufPointer()
 
 
 // =====================================================================
+// CdCallbackStream
+
+CdCallbackStream::CdCallbackStream(TdCbStreamRead read_fn,
+	TdCbStreamWrite write_fn, TdCbStreamSeek seek_fn,
+	TdCbStreamGetSize getsize_fn, TdCbStreamSetSize setsize_fn,
+	TdCbStreamClose close_fn, void *user_data): CdStream()
+{
+	fReadFn = read_fn;
+	fWriteFn = write_fn;
+	fSeekFn = seek_fn;
+	fGetSizeFn = getsize_fn;
+	fSetSizeFn = setsize_fn;
+	fCloseFn = close_fn;
+	fUserData = user_data;
+}
+
+CdCallbackStream::~CdCallbackStream()
+{
+	if (fCloseFn)
+		fCloseFn(fUserData);
+}
+
+ssize_t CdCallbackStream::Read(void *Buffer, ssize_t Count)
+{
+	if (fReadFn)
+		return fReadFn(fUserData, Buffer, Count);
+	return 0;
+}
+
+ssize_t CdCallbackStream::Write(const void *Buffer, ssize_t Count)
+{
+	if (fWriteFn)
+		return fWriteFn(fUserData, Buffer, Count);
+	throw ErrStream("CdCallbackStream: no write callback provided.");
+}
+
+SIZE64 CdCallbackStream::Seek(SIZE64 Offset, TdSysSeekOrg Origin)
+{
+	if (fSeekFn)
+		return (SIZE64)fSeekFn(fUserData, (C_Int64)Offset, (int)Origin);
+	return 0;
+}
+
+SIZE64 CdCallbackStream::GetSize()
+{
+	if (fGetSizeFn)
+		return (SIZE64)fGetSizeFn(fUserData);
+	return 0;
+}
+
+void CdCallbackStream::SetSize(SIZE64 NewSize)
+{
+	if (fSetSizeFn)
+	{
+		fSetSizeFn(fUserData, (C_Int64)NewSize);
+		return;
+	}
+	throw ErrStream("CdCallbackStream: no SetSize callback provided.");
+}
+
+
+// =====================================================================
 // CdStdInStream
 
 #ifndef COREARRAY_NO_STD_IN_OUT

@@ -2,7 +2,7 @@
 #
 # gdsfmt-main.r: R Interface to CoreArray Genomic Data Structure (GDS) Files
 #
-# Copyright (C) 2011-2023    Xiuwen Zheng
+# Copyright (C) 2011-2026    Xiuwen Zheng
 #
 # This is free software: you can redistribute it and/or modify it
 # under the terms of the GNU Lesser General Public License Version 3 as
@@ -22,6 +22,7 @@
 ##############################################################################
 # File Operations
 ##############################################################################
+
 
 #############################################################
 # Create a new CoreArray Genomic Data Structure (GDS) file
@@ -53,6 +54,21 @@ openfn.gds <- function(filename, readonly=TRUE, allow.duplicate=FALSE,
 {
     stopifnot(is.character(filename), length(filename)==1L)
     stopifnot(is.logical(use.abspath), length(use.abspath)==1L)
+
+    # Check for cloud URL scheme (e.g., s3://, gs://, az://)
+    scheme <- .gds_parse_cloud_scheme(filename)
+    if (!is.null(scheme))
+    {
+        handler <- .gds_get_cloud_handler(scheme)
+        if (is.null(handler))
+        {
+            stop("No handler registered for '", scheme, "://' URLs. ",
+                "Consider installing and loading the 'gdscloud' package.")
+        }
+        if (!readonly)
+            stop("Cloud URLs only support read-only access.")
+        return(handler(filename, allow.error=allow.error))
+    }
 
     fullfn <- normalizePath(filename, mustWork=FALSE)
     ans <- .Call(gdsOpenGDS, fullfn, readonly, allow.duplicate,
@@ -130,7 +146,8 @@ diagnosis.gds <- function(gds, log.only=FALSE)
         {
             names(rv) <- c("stream", "log")
             rv$stream <- as.data.frame(rv$stream, stringsAsFactors=FALSE)
-            colnames(rv$stream) <- c("id", "size", "capacity", "num_chunk", "path")
+            colnames(rv$stream) <-
+                c("id", "size", "capacity", "num_chunk", "path")
         }
     } else {
         # a gds node
@@ -242,7 +259,8 @@ objdesp.gdsn <- function(node)
 # Add a GDS node
 #
 add.gdsn <- function(node, name, val=NULL, storage=storage.mode(val),
-    valdim=NULL, compress=c("", "ZIP", "ZIP_RA", "LZMA", "LZMA_RA", "LZ4", "LZ4_RA"),
+    valdim=NULL,
+    compress=c("", "ZIP", "ZIP_RA", "LZMA", "LZMA_RA", "LZ4", "LZ4_RA"),
     closezip=FALSE, check=TRUE, replace=FALSE, visible=TRUE, ...)
 {
     if (inherits(node, "gds.class"))
@@ -271,7 +289,8 @@ add.gdsn <- function(node, name, val=NULL, storage=storage.mode(val),
             if (is.numeric(valdim))
                 valdim[length(valdim)] <- 0L
         }
-        if (identical(compress, c("", "ZIP", "ZIP_RA", "LZMA", "LZMA_RA", "LZ4", "LZ4_RA")))
+        if (identical(compress,
+            c("", "ZIP", "ZIP_RA", "LZMA", "LZMA_RA", "LZ4", "LZ4_RA")))
         {
             compress <- dp$compress
         }
@@ -1369,7 +1388,10 @@ print.gdsn.class <- function(x, expand=TRUE, all=FALSE, nmax=Inf, depth=Inf,
     {
         d <- nchar(prefix) %/% 3L
         if (d > depth)
-            { cat(prefix, "...\n"); return(FALSE) }
+        {
+            cat(prefix, "...\n");
+            return(FALSE)
+        }
         nn <<- nn + 1L
         if (nn > nmax)
         {

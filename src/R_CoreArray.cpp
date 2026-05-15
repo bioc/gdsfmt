@@ -8,7 +8,7 @@
 //
 // R_CoreArray.cpp: Export the C routines of CoreArray library
 //
-// Copyright (C) 2014-2024    Xiuwen Zheng
+// Copyright (C) 2014-2026    Xiuwen Zheng
 //
 // gdsfmt is free software: you can redistribute it and/or modify it
 // under the terms of the GNU Lesser General Public License Version 3 as
@@ -140,6 +140,8 @@ extern "C"
 
 static bool flag_init_Matrix = false;
 
+static SEXP GDS_CLASS_NAME = NULL;
+static SEXP GDS_LIST_NAME  = NULL;
 
 // predefined strings
 static const char *ERR_WRITE_ONLY =
@@ -227,6 +229,29 @@ COREARRAY_DLL_LOCAL SEXP new_gdsptr_obj(CdGDSFile *file, SEXP id, bool do_free)
 		UNPROTECT(1);
 	}
 	return rv;
+}
+
+
+/// Build a complete gds.class R list from PdGDSFile (requiring >= v1.49.1)
+COREARRAY_DLL_EXPORT SEXP GDS_R_MakeFileObj(PdGDSFile file,
+	const char *filename, C_BOOL readonly)
+{
+	int idx = GetFileIndex(file);
+	SEXP ans = PROTECT(NEW_LIST(5));
+	SET_ELEMENT(ans, 0, Rf_mkString(filename));
+	SEXP ID = Rf_ScalarInteger(idx);
+	SET_ELEMENT(ans, 1, ID);
+	SET_ELEMENT(ans, 2, new_gdsptr_obj(file, ID, true));
+	SET_ELEMENT(ans, 3, GDS_R_Obj2SEXP(&(file->Root())));
+	SET_ELEMENT(ans, 4, Rf_ScalarLogical(readonly));
+
+	// set names
+	Rf_setAttrib(ans, R_NamesSymbol, GDS_LIST_NAME);
+	// set class
+	Rf_setAttrib(ans, R_ClassSymbol, GDS_CLASS_NAME);
+
+	UNPROTECT(1);
+	return ans;
 }
 
 
@@ -1086,6 +1111,11 @@ COREARRAY_DLL_EXPORT void GDS_R_Is_Element(PdAbstractArray Obj, SEXP SetEL,
 // ===========================================================================
 // functions for file structure
 
+static const char *INFO_LOG = "Log:";
+static const char *INFO_SP = "  ";
+static const char *INFO_NEW_CMD =
+	"Consider using 'openfn.gds(, allow.error=TRUE)'.";
+
 /// create a GDS file
 COREARRAY_DLL_EXPORT PdGDSFile GDS_File_Create(const char *FileName)
 {
@@ -1119,10 +1149,6 @@ COREARRAY_DLL_EXPORT PdGDSFile GDS_File_Create(const char *FileName)
 COREARRAY_DLL_EXPORT PdGDSFile GDS_File_Open(const char *FileName,
 	C_BOOL ReadOnly, C_BOOL ForkSupport, C_BOOL AllowError)
 {
-	static const char *INFO_LOG = "Log:";
-	static const char *INFO_SP = "  ";
-	static const char *INFO_NEW_CMD =
-		"Consider using 'openfn.gds(, allow.error=TRUE)'.";
 
 	// to register CoreArray classes and objects
 	RegisterClass();
@@ -1137,6 +1163,67 @@ COREARRAY_DLL_EXPORT PdGDSFile GDS_File_Open(const char *FileName,
 		else
 			file->LoadFileFork(FileName, ReadOnly, AllowError);
 
+		PKG_GDS_Files[gds_idx] = file;
+	}
+	catch (std::exception &E) {
+		string Msg = E.what();
+		if ((file!=NULL) && !file->Log().List().empty())
+		{
+			Msg.append(sLineBreak).append(INFO_LOG);
+			for (size_t i=0; i < file->Log().List().size(); i++)
+			{
+				Msg.append(sLineBreak).append(INFO_SP);
+				Msg.append(RawText(file->Log().List()[i].Msg));
+			}
+			if (!AllowError)
+				Msg.append(sLineBreak).append(INFO_SP).append(INFO_NEW_CMD);
+		}
+		if (file) delete file;
+		throw ErrGDSFmt(Msg);
+	}
+	catch (const char *E) {
+		string Msg = E;
+		if ((file!=NULL) && !file->Log().List().empty())
+		{
+			Msg.append(sLineBreak).append(INFO_LOG);
+			for (size_t i=0; i < file->Log().List().size(); i++)
+			{
+				Msg.append(sLineBreak).append(INFO_SP);
+				Msg.append(RawText(file->Log().List()[i].Msg));
+			}
+			if (!AllowError)
+				Msg.append(sLineBreak).append(INFO_SP).append(INFO_NEW_CMD);
+		}
+		if (file) delete file;
+		throw ErrGDSFmt(Msg);
+	}
+	catch (...) {
+		if (file) delete file;
+		throw;
+	}
+	return file;
+}
+
+/// open an existing GDS file via external callback stream
+COREARRAY_DLL_EXPORT PdGDSFile GDS_File_Open_Callback(
+	void *user_data,
+	TdCbStreamRead read_fn, TdCbStreamWrite write_fn,
+	TdCbStreamSeek seek_fn, TdCbStreamGetSize getsize_fn,
+	TdCbStreamSetSize setsize_fn, TdCbStreamClose close_fn,
+	C_BOOL ReadOnly, C_BOOL AllowError)
+{
+	// to register CoreArray classes and objects
+	RegisterClass();
+
+	int gds_idx = GetEmptyFileIndex();
+	PdGDSFile file = NULL;
+
+	try {
+		file = new CdGDSFile;
+		TdAutoRef<CdStream> stream(new CdCallbackStream(
+			read_fn, write_fn, seek_fn, getsize_fn, setsize_fn,
+			close_fn, user_data));
+		file->LoadStream(stream.get(), ReadOnly, AllowError);
 		PKG_GDS_Files[gds_idx] = file;
 	}
 	catch (std::exception &E) {
@@ -1253,12 +1340,86 @@ COREARRAY_DLL_EXPORT C_BOOL GDS_File_Reopen(SEXP GDSObj)
 		int i_rd = GetIndexList(GDSObj, VAR_RD);
 		if (i_rd < 0)
 			throw ErrGDSFmt(ERR_CLASS, VAR_RD);
-		int readonly = Rf_asLogical(VECTOR_ELT(GDSObj, i_rd));
 		// root
 		int i_rt = GetIndexList(GDSObj, VAR_RT);
 		if (i_rt < 0)
 			throw ErrGDSFmt(ERR_CLASS, VAR_RT);
-		// open
+
+		// cloud URL: reopen via R-level handler
+		if (fn && strstr(fn, "://"))
+		{
+			// parse scheme (e.g., "s3" from "s3://bucket/file.gds")
+			const char *sep = strstr(fn, "://");
+			size_t scheme_len = sep - fn;
+			if (scheme_len == 0 || scheme_len > 31)
+				throw ErrGDSFmt("Invalid cloud URL scheme in '%s'.", fn);
+			char scheme[32];
+			memcpy(scheme, fn, scheme_len);
+			scheme[scheme_len] = '\0';
+
+			// load the cloud package if pkgname attribute is set
+			SEXP pkg_attr = Rf_getAttrib(fn_obj, Rf_install("pkgname"));
+			if (TYPEOF(pkg_attr) == STRSXP && XLENGTH(pkg_attr) > 0)
+			{
+				const char *pkg = CHAR(STRING_ELT(pkg_attr, 0));
+				if (pkg && pkg[0])
+				{
+					// requireNamespace(pkg, quietly=TRUE)
+					SEXP call = PROTECT(Rf_lang3(
+						Rf_install("requireNamespace"),
+						Rf_mkString(pkg),
+						Rf_ScalarLogical(TRUE)));
+					SET_TAG(CDDR(call), Rf_install("quietly"));
+					R_tryEval(call, R_BaseNamespace, NULL);
+					UNPROTECT(1);
+				}
+			}
+
+			// get handler: gdsfmt:::.gds_get_cloud_handler(scheme)
+			SEXP gdsfmt_ns = R_FindNamespace(Rf_mkString("gdsfmt"));
+			SEXP get_handler_fn = Rf_findFun(
+				Rf_install(".gds_get_cloud_handler"), gdsfmt_ns);
+			SEXP call2 = PROTECT(Rf_lang2(get_handler_fn,
+				Rf_mkString(scheme)));
+			int err2 = 0;
+			SEXP handler = PROTECT(R_tryEval(call2, gdsfmt_ns, &err2));
+			if (err2 || Rf_isNull(handler) || !Rf_isFunction(handler))
+			{
+				UNPROTECT(2);
+				throw ErrGDSFmt(
+					"Cannot reopen cloud file '%s': "
+					"no handler registered for '%s://' scheme. "
+					"Load the cloud package (e.g., gdscloud) first.",
+					fn, scheme);
+			}
+
+			// call handler(url, allow.error=FALSE)
+			SEXP call3 = PROTECT(Rf_lang3(handler,
+				fn_obj, Rf_ScalarLogical(FALSE)));
+			SET_TAG(CDDR(call3), Rf_install("allow.error"));
+			int err3 = 0;
+			SEXP newgds = PROTECT(R_tryEval(call3, R_GlobalEnv, &err3));
+			if (err3 || Rf_isNull(newgds))
+			{
+				UNPROTECT(4);
+				throw ErrGDSFmt(
+					"Failed to reopen cloud file '%s' via handler.", fn);
+			}
+
+			// update GDSObj in-place from newgds (id, ptr, root)
+			SEXP new_id  = GetListElement(newgds, VAR_ID);
+			SEXP new_ptr = GetListElement(newgds, VAR_PTR);
+			SEXP new_rt  = GetListElement(newgds, VAR_RT);
+			SET_ELEMENT(GDSObj, i_id, new_id);
+			SET_ELEMENT(GDSObj, i_ptr, new_ptr);
+			SET_ELEMENT(GDSObj, i_rt, new_rt);
+
+			UNPROTECT(4);
+			return TRUE;
+		}
+
+		// local file: reopen at C level
+		int readonly = Rf_asLogical(VECTOR_ELT(GDSObj, i_rd));
 		CdGDSFile *file = GDS_File_Open(fn, readonly, TRUE, FALSE);
 		SEXP ID = Rf_ScalarInteger(GetFileIndex(file));
 		SET_ELEMENT(GDSObj, i_id, ID);
@@ -1882,10 +2043,12 @@ COREARRAY_DLL_EXPORT SEXP GDS_New_SpCMatrix2(SEXP x, SEXP i, SEXP p,
 
 extern COREARRAY_DLL_LOCAL void R_Init_RegCallMethods(DllInfo *info);
 
-COREARRAY_DLL_EXPORT SEXP gdsInitPkg(SEXP lang_var)
+COREARRAY_DLL_EXPORT SEXP gdsInitPkg(SEXP gds_val)
 {
-	LANG_LOAD_LIB_MATRIX = VECTOR_ELT(lang_var, 0);
-	LANG_NEW_SP_MATRIX = VECTOR_ELT(lang_var, 1);
+	LANG_LOAD_LIB_MATRIX = VECTOR_ELT(gds_val, 0);
+	LANG_NEW_SP_MATRIX = VECTOR_ELT(gds_val, 1);
+	GDS_CLASS_NAME = VECTOR_ELT(gds_val, 2);
+	GDS_LIST_NAME = VECTOR_ELT(gds_val, 3);
 	return R_NilValue;
 }
 
@@ -1905,6 +2068,7 @@ void R_init_gdsfmt(DllInfo *info)
 	REG(GDS_R_SEXP2Obj);
 	REG(GDS_R_Obj2SEXP);
 	REG(GDS_R_Obj_SEXP2SEXP);
+	REG(GDS_R_MakeFileObj);
 	REG(GDS_R_Is_Logical);
 	REG(GDS_R_Is_Factor);
 	REG(GDS_R_Is_ExtType);
@@ -1918,6 +2082,7 @@ void R_init_gdsfmt(DllInfo *info)
 	// functions for file structure
 	REG(GDS_File_Create);
 	REG(GDS_File_Open);
+	REG(GDS_File_Open_Callback);
 	REG(GDS_File_Close);
 	REG(GDS_File_Sync);
 	REG(GDS_File_Reopen);
