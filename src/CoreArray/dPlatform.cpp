@@ -8,7 +8,7 @@
 //
 // dPlatform.cpp: Functions for independent platforms
 //
-// Copyright (C) 2007-2023    Xiuwen Zheng
+// Copyright (C) 2007-2026    Xiuwen Zheng
 //
 // This file is part of CoreArray.
 //
@@ -30,12 +30,17 @@
 
 #include <cfloat>
 #include <cmath>
+#include <cerrno>
 #include <ctime>
 
 // to include vsnprintf in Solaris
 #include <stdio.h>
 #include <stdarg.h>
 #include <string.h>
+
+#if defined(COREARRAY_PLATFORM_WINDOWS)
+#   include <wchar.h>   // _wremove, _wrename
+#endif
 
 
 #include <sys/stat.h>
@@ -46,7 +51,6 @@
 
 #ifdef COREARRAY_PLATFORM_UNIX
 
-	#include <cerrno>
 	#include <fcntl.h>
 	#include <unistd.h>
 	#include <sys/types.h>
@@ -55,7 +59,7 @@
 	#  include <sys/sysctl.h>
 	#endif
 
-	#if !defined(COREARRAY_CYGWIN) && !defined(COREARRAY_PLATFORM_MACOS)
+	#if !defined(COREARRAY_PLATFORM_CYGWIN) && !defined(COREARRAY_PLATFORM_MACOS)
 	#  include <sys/sysinfo.h>
 	#endif
 
@@ -335,7 +339,7 @@ bool CoreArray::IsNaN(const double val)
 	return (ISNAN(val) != 0);
 #else
 	#if defined(COREARRAY_CC_SUNPRO)
-		return (isnanf(val) != 0);
+		return (isnan(val) != 0);
 	#elif defined(COREARRAY_CC_BORLAND)
 		return _isnan(val);
 	#elif defined(COREARRAY_CC_MSC)
@@ -353,7 +357,7 @@ bool CoreArray::IsNaN(const long double val)
 	return (ISNAN(val) != 0);
 #else
 	#if defined(COREARRAY_CC_SUNPRO)
-		return (isnanf(val) != 0);
+		return (isnan(val) != 0);
 	#elif defined(COREARRAY_CC_BORLAND)
 		return _isnan(val);
 	#elif defined(COREARRAY_CC_MSC)
@@ -395,7 +399,7 @@ bool CoreArray::IsNegInf(const long double val)
 	return (FloatClassify(val) == fpNegInf);
 }
 
-bool CoreArray::EqaulFloat(const float v1, const float v2)
+bool CoreArray::EqualFloat(const float v1, const float v2)
 {
 	if (!IsNaN(v1))
 	{
@@ -407,7 +411,7 @@ bool CoreArray::EqaulFloat(const float v1, const float v2)
 		return IsNaN(v2);
 }
 
-bool CoreArray::EqaulFloat(const double v1, const double v2)
+bool CoreArray::EqualFloat(const double v1, const double v2)
 {
 	if (!IsNaN(v1))
 	{
@@ -419,7 +423,7 @@ bool CoreArray::EqaulFloat(const double v1, const double v2)
 		return IsNaN(v2);
 }
 
-bool CoreArray::EqaulFloat(const long double v1, const long double v2)
+bool CoreArray::EqualFloat(const long double v1, const long double v2)
 {
 	if (!IsNaN(v1))
 	{
@@ -442,14 +446,20 @@ static const char *ERR_STR_TO_FLOAT = "Unable to convert string to double.";
 
 string CoreArray::Format(const char *fmt, ...)
 {
-	char buf[4096];
+	char buf[1024];
 	va_list args; va_start(args, fmt);
 	int L = vsnprintf(buf, sizeof(buf), fmt, args);
 	va_end(args);
-	if (L >= 0)
-		return string(buf);
-	else
+	if (L < 0)
 		throw ErrConvert(ERR_FORMAT);
+	if ((size_t)L < sizeof(buf))
+		return string(buf, L);
+	// output was truncated, allocate exact size
+	string result(L, '\0');
+	va_start(args, fmt);
+	vsnprintf(&result[0], L + 1, fmt, args);
+	va_end(args);
+	return result;
 }
 
 void CoreArray::FmtText(char buf[], size_t size, const char *fmt, ...)
@@ -477,10 +487,10 @@ string CoreArray::_FmtNum(const char *fmt, ...)
 // Floating number <--> string
 // =========================================================================
 
-static string STRING_INF("Inf");
-static string STRING_POS_INF("+Inf");
-static string STRING_NEG_INF("-Inf");
-static string STRING_NAN("NaN");
+static const string STRING_INF("Inf");
+static const string STRING_POS_INF("+Inf");
+static const string STRING_NEG_INF("-Inf");
+static const string STRING_NAN("NaN");
 
 string CoreArray::FloatToStr(const float val)
 {
@@ -581,10 +591,10 @@ string CoreArray::IntToStr(C_Int8 val)
 {
 	char buf[8];
 	char *p = buf + sizeof(buf);
-	C_Int8 v = (val >= 0) ? val : -val;
+	C_UInt8 v = (val >= 0) ? (C_UInt8)val : (C_UInt8)(-(int)val);
 	do {
-		*(--p) = (v % 10) + '0';
-		v /= 10;
+		*(--p) = (v % 10u) + '0';
+		v /= 10u;
 	} while (v > 0);
 	if (val < 0) *(--p) = '-';
 	return string(p, sizeof(buf) - (p - buf));
@@ -605,10 +615,10 @@ string CoreArray::IntToStr(C_Int16 val)
 {
 	char buf[8];
 	char *p = buf + sizeof(buf);
-	C_Int16 v = (val >= 0) ? val : -val;
+	C_UInt16 v = (val >= 0) ? (C_UInt16)val : (C_UInt16)(-(int)val);
 	do {
-		*(--p) = (v % 10) + '0';
-		v /= 10;
+		*(--p) = (v % 10u) + '0';
+		v /= 10u;
 	} while (v > 0);
 	if (val < 0) *(--p) = '-';
 	return string(p, sizeof(buf) - (p - buf));
@@ -629,10 +639,10 @@ string CoreArray::IntToStr(C_Int32 val)
 {
 	char buf[16];
 	char *p = buf + sizeof(buf);
-	C_Int32 v = (val >= 0) ? val : -val;
+	C_UInt32 v = (val >= 0) ? (C_UInt32)val : (C_UInt32)(-(C_Int64)val);
 	do {
-		*(--p) = (v % 10) + '0';
-		v /= 10;
+		*(--p) = (v % 10u) + '0';
+		v /= 10u;
 	} while (v > 0);
 	if (val < 0) *(--p) = '-';
 	return string(p, sizeof(buf) - (p - buf));
@@ -653,10 +663,10 @@ string CoreArray::IntToStr(C_Int64 val)
 {
 	char buf[32];
 	char *p = buf + sizeof(buf);
-	C_Int64 v = (val >= 0) ? val : -val;
+	C_UInt64 v = (val >= 0) ? (C_UInt64)val : (C_UInt64)(-val);
 	do {
-		*(--p) = (v % 10) + '0';
-		v /= 10;
+		*(--p) = (v % 10u) + '0';
+		v /= 10u;
 	} while (v > 0);
 	if (val < 0) *(--p) = '-';
 	return string(p, sizeof(buf) - (p - buf));
@@ -1086,8 +1096,17 @@ string CoreArray::NowDateToStr()
 {
 	time_t tm;
 	time(&tm);
-	string rv(ctime(&tm));
-	rv.erase(rv.size()-1, 1);
+#if defined(COREARRAY_PLATFORM_WINDOWS)
+	char buf[26];
+	ctime_s(buf, sizeof(buf), &tm);
+	string rv(buf);
+#else
+	char buf[26];
+	ctime_r(&tm, buf);
+	string rv(buf);
+#endif
+	if (!rv.empty() && rv[rv.size()-1] == '\n')
+		rv.erase(rv.size()-1, 1);
 	return rv;
 }
 
@@ -1206,8 +1225,8 @@ C_Int64 CoreArray::SysHandleSeek(TSysHandle Handle, C_Int64 Offset,
 		else
 			return li.QuadPart;
 	#else
-		#if defined(COREARRAY_CYGWIN) || defined(COREARRAY_PLATFORM_MACOS) || defined(COREARRAY_PLATFORM_BSD) || (defined(COREARRAY_PLATFORM_LINUX) && (!defined(__GLIBC__) || defined(__MUSL__)))
-			// defined(COREARRAY_PLATFORM_LINUX) && !defined(__GLIBC__) intends to include MUSL
+		#if defined(COREARRAY_PLATFORM_CYGWIN) || defined(COREARRAY_PLATFORM_MACOS) || defined(COREARRAY_PLATFORM_BSD) || (defined(COREARRAY_PLATFORM_LINUX) && !defined(__GLIBC__))
+			// non-glibc Linux (e.g., musl) uses lseek
 			return lseek(Handle, Offset, sk);
 		#else
 			return lseek64(Handle, Offset, sk);
@@ -1223,8 +1242,8 @@ bool CoreArray::SysHandleSetSize(TSysHandle Handle, C_Int64 NewSize)
 		else
 			return false;
 	#else
-		#if defined(COREARRAY_CYGWIN) || defined(COREARRAY_PLATFORM_MACOS) || defined(COREARRAY_PLATFORM_BSD) || (defined(COREARRAY_PLATFORM_LINUX) && (!defined(__GLIBC__) || defined(__MUSL__)))
-			// defined(COREARRAY_PLATFORM_LINUX) && !defined(__GLIBC__) intends to include MUSL
+		#if defined(COREARRAY_PLATFORM_CYGWIN) || defined(COREARRAY_PLATFORM_MACOS) || defined(COREARRAY_PLATFORM_BSD) || (defined(COREARRAY_PLATFORM_LINUX) && !defined(__GLIBC__))
+			// non-glibc Linux (e.g., musl) uses ftruncate
 			return ftruncate(Handle, NewSize)==0;
 		#else
 			return ftruncate64(Handle, NewSize)==0;
@@ -1249,25 +1268,45 @@ string CoreArray::TempFileName(const char *prefix, const char *tempdir)
 	if (*tempdir)
 	{
 		fn = tempdir;
-		if (tempdir[strlen(tempdir)] != sFileSep[0])
+		// tempdir[strlen(tempdir)] indexes the NUL terminator; use the last
+		// character instead. Only append a separator if the directory path
+		// does not already end with one.
+		const size_t tlen = strlen(tempdir);
+		if (tlen > 0 && tempdir[tlen - 1] != sFileSep[0])
 			fn.append(sFileSep);
 	}
 	if (prefix) fn.append(prefix);
 
-    char tmp[64];
-	for (int n = 0; n < 10000; n++)
+#if defined(COREARRAY_PLATFORM_WINDOWS)
+	// Checked *before* COREARRAY_PLATFORM_UNIX: on Cygwin-style builds
+	// both macros may be defined, and we want the Windows-native API path
+	// to win there.
+	char tmpDir[MAX_PATH];
+	if (!tempdir || !*tempdir)
 	{
-	#if RAND_MAX > 16777215
-		sprintf(tmp, "%x", rand());
-	#else
-		sprintf(tmp, "%x%x", rand(), rand());
-	#endif
-		// check file exists
-		struct stat sb;
-		if (stat((fn + tmp).c_str(), &sb) != 0)
-        	return fn + tmp;
+		DWORD len = GetTempPathA(MAX_PATH, tmpDir);
+		if (len == 0 || len >= MAX_PATH)
+			throw ErrOSError("Failed to get temporary directory.");
+		tempdir = tmpDir;
 	}
-	throw ErrOSError("No suitable temporary file name.");
+	char tmpFile[MAX_PATH];
+	if (GetTempFileNameA(tempdir, prefix ? prefix : "tmp", 0, tmpFile) == 0)
+		throw ErrOSError("No suitable temporary file name.");
+	return string(tmpFile);
+
+#else
+
+	fn.append("xxxxxx");
+	// mkstemp requires a writable char array
+	vector<char> tpl(fn.begin(), fn.end());
+	tpl.push_back('\0');
+	int fd = mkstemp(&tpl[0]);
+	if (fd == -1)
+		throw ErrOSError("No suitable temporary file name.");
+	close(fd);
+	return string(&tpl[0]);
+
+#endif
 
 #endif
 }
@@ -1276,6 +1315,37 @@ bool CoreArray::FileExists(const string &FileName)
 {
 	struct stat sb;
 	return (stat(FileName.c_str(), &sb) == 0);
+}
+
+int CoreArray::FileRemove(const string &FileName)
+{
+#if defined(COREARRAY_PLATFORM_WINDOWS)
+	// The C runtime remove() interprets bytes in the ANSI codepage, not
+	// UTF-8. Convert to UTF-16 and use the wide variant for non-ASCII names.
+	UTF16String w = UTF8ToUTF16(UTF8String(FileName.begin(), FileName.end()));
+	if (_wremove((const wchar_t*)w.c_str()) != 0)
+		return errno;
+	return 0;
+#else
+	if (remove(FileName.c_str()) != 0)
+		return errno;
+	return 0;
+#endif
+}
+
+int CoreArray::FileRename(const string &OldName, const string &NewName)
+{
+#if defined(COREARRAY_PLATFORM_WINDOWS)
+	UTF16String w_old = UTF8ToUTF16(UTF8String(OldName.begin(), OldName.end()));
+	UTF16String w_new = UTF8ToUTF16(UTF8String(NewName.begin(), NewName.end()));
+	if (_wrename((const wchar_t*)w_old.c_str(), (const wchar_t*)w_new.c_str()) != 0)
+		return errno;
+	return 0;
+#else
+	if (rename(OldName.c_str(), NewName.c_str()) != 0)
+		return errno;
+	return 0;
+#endif
 }
 
 
@@ -1303,7 +1373,26 @@ string CoreArray::SysErrMessage(int err)
 			buf, sizeof(buf), NULL);
 		return string(buf);
 	#elif defined(COREARRAY_PLATFORM_UNIX)
-		return string(strerror(err));
+		// strerror() is not thread-safe; worker threads calling
+		// LastSysErrMsg() concurrently could otherwise see interleaved or
+		// overwritten messages. Use strerror_r() with a private buffer.
+		// Sized to match the Windows FormatMessage branch so that localized
+		// (non-English) messages are unlikely to be truncated; POSIX does
+		// not bound strerror output length and both strerror_r variants
+		// are safe on overflow (XSI returns ERANGE, GNU truncates).
+		char buf[1024];
+		buf[0] = '\0';
+		#if defined(_GNU_SOURCE) && !defined(COREARRAY_PLATFORM_MACOS) && !defined(COREARRAY_PLATFORM_BSD)
+			// GNU variant: may return a static string pointer and/or write
+			// into `buf`; its return type is `char*`.
+			const char *msg = strerror_r(err, buf, sizeof(buf));
+			return string(msg ? msg : "unknown error");
+		#else
+			// XSI / POSIX variant returns int (0 on success).
+			if (strerror_r(err, buf, sizeof(buf)) != 0 && buf[0] == '\0')
+				snprintf(buf, sizeof(buf), "errno %d", err);
+			return string(buf);
+		#endif
 	#endif
 }
 
@@ -1326,7 +1415,7 @@ int CoreArray::Mach::GetCPU_NumOfCores()
 	GetSystemInfo(&info);
 	return info.dwNumberOfProcessors;
 
-#elif defined(COREARRAY_CYGWIN)
+#elif defined(COREARRAY_PLATFORM_CYGWIN)
 
 	const char * p = getenv("NUMBER_OF_PROCESSORS");
 	if (p)
@@ -1474,21 +1563,27 @@ C_UInt64 CoreArray::Mach::GetCPU_LevelCache(int level)
 		"/sys/devices/system/cpu/cpu0/cache/index%d/size", level).c_str(), "r");
 	if (!f) return 0;
 	int x = 0;
-	if (fscanf(f, "%d", &x) != EOF)
+	if (fscanf(f, "%d", &x) == 1)
 	{
+		// The sysfs entry is always of the form "<num>K" or "<num>M"
+		// (e.g. "32K"). If the unit is missing or unrecognised report 0
+		// rather than raw `x`, because returning raw `x` would be bytes on
+		// one path and kilobytes on the other — a silent unit mismatch.
 		char ch = 0;
-		if (fscanf(f, "%c", &ch) != EOF)
+		int got = fscanf(f, "%c", &ch);
+		fclose(f);
+		if (got == 1)
 		{
-			if ((ch == 'K') || (ch == 'k'))
+			if (ch == 'K' || ch == 'k')
 				return C_UInt64(x) * 1024;
-			else if ((ch == 'M') || (ch == 'm'))
+			if (ch == 'M' || ch == 'm')
 				return C_UInt64(x) * 1024 * 1024;
-			else
-				return 0;
-		} else
-			return x;
-	} else
+		}
 		return 0;
+	} else {
+		fclose(f);
+		return 0;
+	}
 
 #else
 
@@ -1922,7 +2017,9 @@ void CdThread::BeginThread()
 		SECURITY_ATTRIBUTES attr;
 			attr.nLength = sizeof(attr);
 			attr.lpSecurityDescriptor = NULL;
-			attr.bInheritHandle = true;
+			// Do not let child processes inherit worker thread handles;
+			// they should be private to this process.
+			attr.bInheritHandle = FALSE;
 		thread.Handle = CreateThread(&attr, 0, ThreadWrap1, (void*)this,
 			0, &thread.ThreadID);
 		if (thread.Handle == NULL)
@@ -1952,13 +2049,15 @@ void CdThread::_BeginThread()
 		SECURITY_ATTRIBUTES attr;
 			attr.nLength = sizeof(attr);
 			attr.lpSecurityDescriptor = NULL;
-			attr.bInheritHandle = true;
+			// Do not let child processes inherit worker thread handles; they
+			// should be private to this process.
+			attr.bInheritHandle = FALSE;
 		thread.Handle = CreateThread(&attr, 0, ThreadWrap2, (void*)&vData,
 			0, &thread.ThreadID);
 		if (thread.Handle == NULL)
 			RaiseLastOSError<ErrThread>();
 	} else
-    	throw ErrThread("_BeginThread");
+		throw ErrThread("_BeginThread");
 
 #endif
 }

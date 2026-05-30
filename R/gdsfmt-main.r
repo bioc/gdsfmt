@@ -105,10 +105,10 @@ sync.gds <- function(gdsfile)
 #############################################################
 # Clean up fragments of a GDS file
 #
-cleanup.gds <- function(filename, verbose=TRUE)
+cleanup.gds <- function(filename, sort=TRUE, verbose=TRUE)
 {
     stopifnot(is.character(filename), length(filename)==1L)
-    .Call(gdsTidyUp, filename, verbose)
+    .Call(gdsTidyUp, filename, sort, verbose)
     invisible()
 }
 
@@ -885,8 +885,13 @@ clusterApply.gdsn <- function(cl, gds.fn, node.name, margin,
             {
                 if (item$n <= 0L) return(NULL)
 
-                # load the package
-                library(gdsfmt)
+                # load the package(s)
+                for (pkg in attr(gds.fn, "pkgname"))
+                {
+                    library(pkg, character.only=TRUE, quietly=TRUE,
+                        verbose=FALSE)
+                }
+                library(gdsfmt, quietly=TRUE, verbose=FALSE)
 
                 # open the file
                 gfile <- openfn.gds(gds.fn, allow.duplicate=TRUE)

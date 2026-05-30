@@ -8,7 +8,7 @@
 //
 // dFile.cpp: Functions and classes for CoreArray Genomic Data Structure (GDS)
 //
-// Copyright (C) 2007-2020    Xiuwen Zheng
+// Copyright (C) 2007-2026    Xiuwen Zheng
 //
 // This file is part of CoreArray.
 //
@@ -27,6 +27,8 @@
 
 #include "dFile.h"
 #include <algorithm>
+#include <cerrno>   // ENOENT
+#include <map>
 
 
 using namespace CoreArray;
@@ -192,8 +194,17 @@ void CdObjAttr::Loading(CdReader &Reader, TdVersion Version)
 			try {
 				I->name = UTF16ToUTF8(Reader.Storage().RpUTF16()); // TODO
 				Reader >> I->val;
+			} catch (exception &E) {
+				delete I;
+				Reader.Log().Add(CdLogRecord::LOG_ERROR,
+					"Failed to load attribute %d of %d: %s",
+					i, (int)Cnt, E.what());
+				break;
 			} catch (...) {
 				delete I;
+				Reader.Log().Add(CdLogRecord::LOG_ERROR,
+					"Failed to load attribute %d of %d (unknown error).",
+					i, (int)Cnt);
 				break;
 			}
 			fList.push_back(I);
@@ -204,7 +215,7 @@ void CdObjAttr::Loading(CdReader &Reader, TdVersion Version)
 
 void CdObjAttr::Saving(CdWriter &Writer)
 {
-	C_Int32 Cnt = fList.size();
+	C_Int32 Cnt = (C_Int32)fList.size();
 	Writer[VAR_ATTRCNT] << Cnt;
 	if (Cnt > 0)
 	{
@@ -247,8 +258,8 @@ void CdObjAttr::SetName(const UTF8String &OldName, const UTF8String &NewName)
 
 void CdObjAttr::SetName(int Index, const UTF8String &NewName)
 {
-	TdPair &p = *fList.at(Index); // check range
 	_ValidateName(NewName);
+	TdPair &p = *fList.at(Index); // check range
 	if (p.name != NewName)
 	{
 		if (HasName(NewName))
@@ -1034,9 +1045,12 @@ void CdPipeMgrItem::SaveStream(CdWriter &Writer) { }
 
 bool CdPipeMgrItem::EqualText(const char *s1, const char *s2)
 {
+	// Cast to unsigned char before passing to toupper(int): passing a
+	// negative char (e.g. a UTF-8 continuation byte with bit 7 set) is
+	// undefined behavior for toupper.
 	for (;*s1 || *s2; s1++, s2++)
 	{
-		if (toupper(*s1) != toupper(*s2))
+		if (toupper((unsigned char)*s1) != toupper((unsigned char)*s2))
 			return false;
 	}
 	return true;
@@ -1457,9 +1471,9 @@ void CdGDSFolder::MoveTo(int Index, int NewPos)
 	static const char *ERR_MOVETO_INVALID_NEWPOS =
 		"CdGDSFolder::MoveTo, invalid 'NewPos' %d.";
 
-	if ((Index < -1) || (Index >= (int)fList.size()))
+	if ((Index < 0) || (Index >= (int)fList.size()))
 		throw ErrGDSObj(ERR_INVALID_INDEX, "CdGDSFolder::MoveTo", Index);
-	if ((NewPos < -1) || (NewPos >= (int)fList.size()))
+	if ((NewPos < 0) || (NewPos >= (int)fList.size()))
 		throw ErrGDSObj(ERR_MOVETO_INVALID_NEWPOS, NewPos);
 	_CheckWritable();
 
@@ -1559,10 +1573,10 @@ void CdGDSFolder::DeleteObj(int Index, bool force)
 			if (stream)
 				fGDSStream->Collection().DeleteBlockStream(stream->ID());
 
-			vector<const CdBlockStream*>::iterator it;
-			for (it=BL.begin(); it != BL.end(); it++)
+			vector<const CdBlockStream*>::iterator i;
+			for (i=BL.begin(); i != BL.end(); i++)
 			{
-				fGDSStream->Collection().DeleteBlockStream((*it)->ID());
+				fGDSStream->Collection().DeleteBlockStream((*i)->ID());
 			}
 		}
 	}
@@ -1693,11 +1707,14 @@ CdGDSObj *CdGDSFolder::PathEx(const UTF8String &FullName)
 
 int CdGDSFolder::IndexObj(CdGDSObj *Obj)
 {
-	vector<CdGDSObj*> lst;
+	if (Obj == NULL) return -1;
+	// Iterate fList directly to avoid force-loading every child just to
+	// compare pointers. Unloaded nodes cannot match a non-null caller
+	// pointer, so skipping them is safe.
 	for (size_t i=0; i < fList.size(); i++)
 	{
-		if (Obj == ObjItem(i))
-			return i;
+		if (fList[i].Obj == Obj)
+			return (int)i;
 	}
 	return -1;
 }
@@ -1762,7 +1779,7 @@ void CdGDSFolder::Loading(CdReader &Reader, TdVersion Version)
 
 void CdGDSFolder::Saving(CdWriter &Writer)
 {
-	C_Int32 L = fList.size();
+	C_Int32 L = (C_Int32)fList.size();
 	Writer[VAR_DIRCNT] << L;
 
 	if (L > 0)
@@ -1816,6 +1833,7 @@ bool CdGDSFolder::_HasName(const UTF8String &Name)
 
 bool CdGDSFolder::_ValidName(const UTF8String &Name)
 {
+	if (Name.empty()) return false;
 	for (size_t i=0; i < Name.size(); i++)
 	{
 		char ch = Name[i];
@@ -2004,7 +2022,8 @@ CdGDSObj *CdGDSVirtualFolder::NewObject()
 
 void CdGDSVirtualFolder::Assign(CdGDSObj &Source, bool Full)
 {
-	if (dynamic_cast<CdGDSLabel*>(&Source))
+	// Guard against the source being a virtual folder
+	if (dynamic_cast<CdGDSVirtualFolder*>(&Source))
 	{
 		if (Full)
 			AssignAttribute(Source);
@@ -2104,7 +2123,7 @@ CdGDSObj *CdGDSVirtualFolder::InsertObj(int index, const UTF8String &Name,
 	CdGDSObj *val)
 {
 	_CheckLinked();
-	return fLinkFile->Root().AddObj(Name, val);
+	return fLinkFile->Root().InsertObj(index, Name, val);
 }
 
 void CdGDSVirtualFolder::MoveTo(int Index, int NewPos)
@@ -2762,13 +2781,20 @@ void CdGDSFile::SaveAsFile(const char *fn)
 	SaveStream(F.get());
 }
 
-void CdGDSFile::DuplicateFile(const UTF8String &fn, bool deep)
+void CdGDSFile::DuplicateFile(const UTF8String &fn, bool deep, bool sort)
 {
 	if (deep)
 	{
 		CdGDSFile file(fn, CdGDSFile::dmCreate);
 		file.Root().AssignFolder(Root());
 	} else {
+		// Shallow duplicate copies raw block data directly from the backing
+		// stream, so any pending in-memory changes must be flushed first or
+		// they would be silently lost in the duplicate.
+		// Read-only files cannot have pending changes, so skip the sync in
+		// that case.
+		if (!fReadOnly) SyncFile();
+
 		// create a new file
 		TdAutoRef<CdStream> F(new CdFileStream(RawText(fn).c_str(),
 			CdFileStream::fmCreate));
@@ -2785,23 +2811,95 @@ void CdGDSFile::DuplicateFile(const UTF8String &fn, bool deep)
 		BYTE_LE<CdStream>(*F) << fRoot.fGDSStream->ID();
 
 		// for-loop for all stream blocks
-		for (int i=0; i < (int)fBlockList.size(); i++)
+		vector<int> idx(fBlockList.size());
+		for (int i=0; i < (int)fBlockList.size(); i++) idx[i] = i;
+		if (sort)
 		{
-			TdGDSPos bSize = fBlockList[i]->Size();
+			// DFS traversal to assign order to each header block ID.
+			// CdGDSFolder nodes are marked so they sort before other headers.
+			struct _HeaderInfo { int order; bool isFolder; };
+			map<TdGDSBlockID, _HeaderInfo> headerMap;
+			struct _EnumHeaders
+			{
+				map<TdGDSBlockID, _HeaderInfo> &hmap;
+				int seq;
+				_EnumHeaders(map<TdGDSBlockID, _HeaderInfo> &m): hmap(m), seq(0) {}
+				void operator()(CdGDSObj &Obj)
+				{
+					if (Obj.GDSStream())
+					{
+						_HeaderInfo info;
+						info.order = seq++;
+						info.isFolder = (dynamic_cast<CdGDSFolder*>(&Obj) != NULL);
+						hmap[Obj.GDSStream()->ID()] = info;
+					}
+					if (dynamic_cast<CdGDSFolder*>(&Obj))
+					{
+						CdGDSFolder &Folder = *static_cast<CdGDSFolder*>(&Obj);
+						for (int i=0; i < Folder.NodeCount(); i++)
+						{
+							CdGDSObj *obj = Folder.ObjItem(i);
+							if (obj) (*this)(*obj);
+						}
+					}
+				}
+			};
+			_EnumHeaders enumFn(headerMap);
+			enumFn(fRoot);
+
+			// sort: folder headers (DFS order) > other headers (DFS order)
+			//       > data blocks (by size, then by ID)
+			struct _CmpBlock
+			{
+				const vector<CdBlockStream*> &bl;
+				const map<TdGDSBlockID, _HeaderInfo> &hmap;
+				_CmpBlock(const vector<CdBlockStream*> &b,
+					const map<TdGDSBlockID, _HeaderInfo> &m): bl(b), hmap(m) {}
+				bool operator()(int a, int b) const
+				{
+					typedef map<TdGDSBlockID, _HeaderInfo>::const_iterator IT;
+					IT ia = hmap.find(bl[a]->ID());
+					IT ib = hmap.find(bl[b]->ID());
+					bool aH = (ia != hmap.end());
+					bool bH = (ib != hmap.end());
+					if (aH != bH) return aH;  // headers before data
+					if (aH && bH)
+					{
+						// folders before non-folders
+						if (ia->second.isFolder != ib->second.isFolder)
+							return ia->second.isFolder;
+						// same category: DFS order
+						return ia->second.order < ib->second.order;
+					}
+					// both data: sort by size then ID
+					if (bl[a]->Size() != bl[b]->Size())
+						return bl[a]->Size() < bl[b]->Size();
+					return bl[a]->ID() < bl[b]->ID();
+				}
+			};
+
+			// run sorting
+			std::sort(idx.begin(), idx.end(), _CmpBlock(fBlockList, headerMap));
+		}
+
+		// write block data
+		for (int i=0; i < (int)idx.size(); i++)
+		{
+			TdGDSPos bSize = fBlockList[idx[i]]->Size();
 			TdGDSPos sSize = (2*GDS_POS_SIZE +
 				CdBlockStream::TBlockInfo::HEAD_SIZE + bSize) |
 				GDS_STREAM_POS_MASK_HEAD_BIT;
 			TdGDSPos sNext = 0;
 			BYTE_LE<CdStream>(*F) <<
-				sSize << sNext << fBlockList[i]->ID() << bSize;
-			F->CopyFrom(*fBlockList[i], 0, -1);
+				sSize << sNext << fBlockList[idx[i]]->ID() << bSize;
+			F->CopyFrom(*fBlockList[idx[i]], 0, -1);
 		}
 	}
 }
 
-void CdGDSFile::DuplicateFile(const char *fn, bool deep)
+void CdGDSFile::DuplicateFile(const char *fn, bool deep, bool sort)
 {
-	DuplicateFile(UTF8Text(fn), deep);
+	DuplicateFile(UTF8Text(fn), deep, sort);
 }
 
 void CdGDSFile::CloseFile()
@@ -2824,17 +2922,37 @@ void CdGDSFile::CloseFile()
     }
 }
 
-void CdGDSFile::TidyUp(bool deep)
+void CdGDSFile::TidyUp(bool deep, bool sort)
 {
+	static const char *ERR_TIDYUP_REMOVE =
+		"CdGDSFile::TidyUp: failed to remove original file '%s' (errno=%d).";
+	static const char *ERR_TIDYUP_RENAME =
+		"CdGDSFile::TidyUp: failed to rename '%s' to '%s' (errno=%d); "
+		"the original file is unchanged and the temporary copy remains.";
+
 	bool TempReadOnly = fReadOnly;
 	UTF8String fn, f;
 	fn = fFileName;
 	f = fn + ASC(".tmp");
-	DuplicateFile(f, deep);
+	DuplicateFile(f, deep, sort);
 	CloseFile();
 
-	remove(RawText(fn).c_str());
-	rename(RawText(f).c_str(), RawText(fn).c_str());
+	// FileRemove / FileRename handle UTF-8 filenames correctly on all
+	// platforms (including non-ASCII names on Windows).
+	int err = FileRemove(RawText(fn));
+	if (err != 0 && err != ENOENT)
+	{
+		// re-load so the caller still has a usable file handle
+		LoadFile(fn, TempReadOnly);
+		throw ErrGDSFile(ERR_TIDYUP_REMOVE, fn.c_str(), err);
+	}
+	err = FileRename(RawText(f), RawText(fn));
+	if (err != 0)
+	{
+		// fallback: try to reopen the original file if it still exists
+		LoadFile(fn, TempReadOnly);
+		throw ErrGDSFile(ERR_TIDYUP_RENAME, f.c_str(), fn.c_str(), err);
+	}
 	LoadFile(fn, TempReadOnly);
 }
 

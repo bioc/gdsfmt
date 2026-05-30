@@ -8,7 +8,7 @@
 //
 // gdsfmt.cpp: R Interface to CoreArray Genomic Data Structure (GDS) Files
 //
-// Copyright (C) 2011-2024    Xiuwen Zheng
+// Copyright (C) 2011-2026    Xiuwen Zheng
 //
 // gdsfmt is free software: you can redistribute it and/or modify it
 // under the terms of the GNU Lesser General Public License Version 3 as
@@ -265,6 +265,11 @@ static string fmt_size(double b)
 	static const double MB = 1024.0*1024;
 	static const double KB = 1024.0;
 
+	// NaN / non-finite inputs fall through every `b >= …` comparison
+	// because comparisons with NaN are always false; report them as "NA"
+	// rather than the nonsense "nanB" produced by the default branch.
+	if (!R_FINITE(b)) return string("NA");
+
 	char s[256];
 	if (b >= TB)
 		FmtText(s, sizeof(s), "%.1fT", b/TB);
@@ -454,12 +459,15 @@ COREARRAY_DLL_EXPORT SEXP gdsFileSize(SEXP gdsfile)
 
 /// Clean up fragments of a GDS file
 /** \param FileName    [in] the file name
+ *  \param Sort        [in] if TRUE, rearrange data blocks by size from small to large
  *  \param Verbose     [in] if TRUE, show information
 **/
-COREARRAY_DLL_EXPORT SEXP gdsTidyUp(SEXP FileName, SEXP Verbose)
+COREARRAY_DLL_EXPORT SEXP gdsTidyUp(SEXP FileName, SEXP Sort, SEXP Verbose)
 {
 	const char *fn = R_ExpandFileName(CHAR(STRING_ELT(FileName, 0)));
-
+	int sort_flag = Rf_asLogical(Sort);
+	if (sort_flag == NA_LOGICAL)
+		Rf_error("'sort' must be TRUE or FALSE.");
 	int verbose_flag = Rf_asLogical(Verbose);
 	if (verbose_flag == NA_LOGICAL)
 		Rf_error("'verbose' must be TRUE or FALSE.");
@@ -475,7 +483,7 @@ COREARRAY_DLL_EXPORT SEXP gdsTidyUp(SEXP FileName, SEXP Verbose)
 			Rprintf("    # of fragments: %d\n", file.GetNumOfFragment());
 			Rprintf("    save to '%s.tmp'\n", fn);
 		}
-		file.TidyUp(false);
+		file.TidyUp(false, sort_flag==TRUE);
 		if (verbose_flag == TRUE)
 		{
 			C_Int64 new_s = file.GetFileSize();
@@ -541,7 +549,7 @@ static void diag_EnumObject(CdGDSObj &Obj)
 	vector<const CdBlockStream*> LIST;
 
 	string name = Obj.FullName();
-	if (name.empty()) name = "/";
+	if (dynamic_cast<CdGDSFolder*>(&Obj)) name += "/";
 
 	diag_MapID[Obj.GDSStream()->ID()] = name + " $head$";
 	Obj.GetOwnBlockStream(LIST);
@@ -1572,7 +1580,15 @@ COREARRAY_DLL_EXPORT SEXP gdsAddNode(SEXP Node, SEXP NodeName, SEXP Val,
 					for (R_xlen_t i=0; i < len; i++)
 					{
 						const char *s = Rf_translateCharUTF8(STRING_ELT(Val, i));
-						int L = strlen(s);
+						// size_t -> int: reject any element longer than INT_MAX
+						// rather than silently wrapping to a negative MaxLen.
+						size_t Lz = strlen(s);
+						if (Lz > (size_t)INT_MAX)
+						{
+							throw ErrGDSFmt(
+								"'val[[%d]]' length exceeds INT_MAX.", (int)(i + 1));
+						}
+						int L = (int)Lz;
 						if (L > MaxLen) MaxLen = L;
 					}
 				}
@@ -2442,7 +2458,7 @@ COREARRAY_DLL_LOCAL void _GDS_DataFmt(SEXP Data, SEXP ValList, size_t st)
 		} else if (Rf_isReal(Data))
 		{
 			REPLACE_HEADER(REALSXP, double, REAL)
-					if (EqaulFloat(*s++, I)) break;
+				if (EqualFloat(*s++, I)) break;
 				if (k < nVal)
 					*p = (nValRep <= 1) ? pValRep[0] : pValRep[k];
 			}
@@ -2527,9 +2543,12 @@ COREARRAY_DLL_EXPORT SEXP gdsDataFmt(SEXP Data, SEXP Simplify, SEXP ValList)
 				}
 				if ((NoOneLength < XLENGTH(dim)) && (NoOneLength > 0))
 				{
-					SEXP dm = NEW_INTEGER(NoOneLength);
+					// PROTECT dm across the fill: Rf_setAttrib may allocate,
+					// after which an unprotected dm could be GCed.
+					SEXP dm = PROTECT(NEW_INTEGER(NoOneLength));
 					memcpy(INTEGER(dm), INTEGER(dim), NoOneLength*sizeof(int));
 					Rf_setAttrib(Data, R_DimSymbol, dm);
+					UNPROTECT(1);
 				}
 			}
 		}
@@ -2558,6 +2577,8 @@ COREARRAY_DLL_EXPORT SEXP gdsObjAppend(SEXP Node, SEXP Val, SEXP Check)
 	if (check_flag == NA_LOGICAL)
 		Rf_error("'check' must be TRUE or FALSE.");
 
+	int nProtected = 0;
+
 	COREARRAY_TRY
 
 		// GDS object
@@ -2566,14 +2587,19 @@ COREARRAY_DLL_EXPORT SEXP gdsObjAppend(SEXP Node, SEXP Val, SEXP Check)
 		if (_Obj == NULL)
 			throw ErrGDSFmt(ERR_NO_DATA);
 
-		int nProtected = 0;
 		C_SVType sv = _Obj->SVType();
 
 		if (COREARRAY_SV_INTEGER(sv))
 		{
-			PROTECT(Val = Rf_coerceVector(Val, INTSXP));
-			nProtected ++;
-			_Obj->Append(INTEGER(Val), XLENGTH(Val), svInt32);
+			if (TYPEOF(Val) == RAWSXP)
+			{
+				// R raw is an 8-bit unsigned byte (Rbyte == unsigned char),
+				_Obj->Append(RAW(Val), XLENGTH(Val), svUInt8);
+			} else {
+				PROTECT(Val = Rf_coerceVector(Val, INTSXP));
+				nProtected ++;
+				_Obj->Append(INTEGER(Val), XLENGTH(Val), svInt32);
+			}
 		} else if (COREARRAY_SV_FLOAT(sv))
 		{
 			PROTECT(Val = Rf_coerceVector(Val, REALSXP));
@@ -2610,6 +2636,7 @@ COREARRAY_DLL_EXPORT SEXP gdsObjAppend(SEXP Node, SEXP Val, SEXP Check)
 			throw ErrGDSFmt("No support!");
 
 		UNPROTECT(nProtected);
+		nProtected = 0;
 
 		if (_Obj->PipeInfo())
 			_Obj->PipeInfo()->UpdateStreamSize();
@@ -2625,6 +2652,7 @@ COREARRAY_DLL_EXPORT SEXP gdsObjAppend(SEXP Node, SEXP Val, SEXP Check)
 		}
 	}
 	catch (ErrAllocWrite &E) {
+		if (nProtected > 0) { UNPROTECT(nProtected); nProtected = 0; }
 		GDS_SetError(ERR_READ_ONLY);
 		has_error = true;
 
@@ -2738,7 +2766,8 @@ COREARRAY_DLL_EXPORT SEXP gdsObjWriteAll(SEXP Node, SEXP Val, SEXP Check)
 			if (TYPEOF(Val) != RAWSXP)
 				Obj->Append(INTEGER(Val), XLENGTH(Val), svInt32);
 			else
-				Obj->Append(RAW(Val), XLENGTH(Val), svInt8);
+				// R raw is an 8-bit unsigned byte (Rbyte == unsigned char),
+				Obj->Append(RAW(Val), XLENGTH(Val), svUInt8);
 		} else if (COREARRAY_SV_FLOAT(ObjSV))
 		{
 			Obj->Append(REAL(Val), XLENGTH(Val), svFloat64);
@@ -2773,8 +2802,10 @@ COREARRAY_DLL_EXPORT SEXP gdsObjWriteAll(SEXP Node, SEXP Val, SEXP Check)
 			throw ErrGDSFmt("No support!");
 
 		UNPROTECT(nProtected);
+		nProtected = 0;
 	}
 	catch (ErrAllocWrite &E) {
+		if (nProtected > 0) { UNPROTECT(nProtected); nProtected = 0; }
 		GDS_SetError(ERR_READ_ONLY);
 		has_error = true;
 
@@ -2856,9 +2887,13 @@ COREARRAY_DLL_EXPORT SEXP gdsObjWriteData(SEXP Node, SEXP Val,
 			Rf_error("Invalid length of dimension of 'val'.");
 	}
 
+	// Hoisted out of the try block so the ErrAllocWrite catch can
+	// UNPROTECT on the exception path. `Obj->WriteData` can throw
+	// *before* the success-path UNPROTECT runs.
+	int nProtected = 0;
+
 	COREARRAY_TRY
 
-		int nProtected = 0;
 		C_SVType ObjSV = Obj->SVType();
 
 		if (COREARRAY_SV_INTEGER(ObjSV))
@@ -2869,7 +2904,8 @@ COREARRAY_DLL_EXPORT SEXP gdsObjWriteData(SEXP Node, SEXP Val,
 				nProtected ++;
 				Obj->WriteData(DStart, DLen, INTEGER(Val), svInt32);
 			} else {
-				Obj->WriteData(DStart, DLen, RAW(Val), svInt8);
+				// R raw is an 8-bit unsigned byte (Rbyte == unsigned char),
+				Obj->WriteData(DStart, DLen, RAW(Val), svUInt8);
 			}
 		} else if (COREARRAY_SV_FLOAT(ObjSV))
 		{
@@ -2904,8 +2940,10 @@ COREARRAY_DLL_EXPORT SEXP gdsObjWriteData(SEXP Node, SEXP Val,
 			throw ErrGDSFmt("No support!");
 
 		UNPROTECT(nProtected);
+		nProtected = 0;
 	}
 	catch (ErrAllocWrite &E) {
+		if (nProtected > 0) { UNPROTECT(nProtected); nProtected = 0; }
 		GDS_SetError(ERR_READ_ONLY);
 		has_error = true;
 
@@ -2936,7 +2974,7 @@ COREARRAY_DLL_EXPORT SEXP gdsObjSetDim(SEXP Node, SEXP DLen, SEXP Permute)
 {
 	// permute
 	int permute_flag = Rf_asLogical(Permute);
-	if (permute_flag == NA_INTEGER)
+	if (permute_flag == NA_LOGICAL)
 		Rf_error("'permute' must be TRUE or FALSE.");
 
 	// GDS object
@@ -3089,11 +3127,17 @@ COREARRAY_DLL_EXPORT SEXP gdsMoveTo(SEXP Node, SEXP LocNode, SEXP RelPos)
 					if (strcmp(S, "replace") == 0)
 					{
 						GDS_Node_Delete(LObj, TRUE);
+						LObj = NULL;  // dangling after delete
 						GDS_R_Obj_SEXP2SEXP(LocNode, Node);
 					} else if (strcmp(S, "replace+rename") == 0)
 					{
-						UTF8String nm = LObj->Name();
+						// Copy the name by value *before* deleting LObj. If
+						// Name() returned a reference into LObj, using `nm`
+						// afterwards would be a use-after-free. UTF8String's
+						// copy-constructor guarantees an independent buffer.
+						UTF8String nm(LObj->Name());
 						GDS_Node_Delete(LObj, TRUE);
+						LObj = NULL;  // dangling after delete
 						Obj->SetName(nm);
 						GDS_R_Obj_SEXP2SEXP(LocNode, Node);
 					}
@@ -3617,7 +3661,8 @@ inline static void _apply_func_gds_append(CdAbstractArray *Obj, SEXP val)
 		Obj->Append(REAL(val), xl, svFloat64);
 		break;
 	case RAWSXP:
-		Obj->Append(RAW(val), xl, svInt8);
+		// R raw is an 8-bit unsigned byte (Rbyte == unsigned char),
+		Obj->Append(RAW(val), xl, svUInt8);
 		break;
 	case STRSXP:
 		{
@@ -3963,6 +4008,14 @@ COREARRAY_DLL_EXPORT SEXP gdsApplyCall(SEXP gds_nodes, SEXP margins,
 		} else if (strcmp(asRes, "gdsnode") == 0)
 		{
 			a_struct.DatType = 7;
+			// `&Targets[0]` on an empty vector is UB (pre-C++17) and even in
+			// C++17+ is only valid as long as pTarget/nTarget are never
+			// dereferenced together; require at least one target node here.
+			if (Targets.empty())
+			{
+				throw ErrGDSFmt(
+					"'target.node' must have at least one element when as.is='gdsnode'.");
+			}
 			a_struct.pTarget = &Targets[0];
 			a_struct.nTarget = Targets.size();
 			GDS_R_Apply(nObject, &ObjList[0], &Margin[0], &sel_ptr[0],
@@ -4261,7 +4314,7 @@ COREARRAY_DLL_LOCAL void R_Init_RegCallMethods(DllInfo *info)
 	{
 		CALL(gdsCreateGDS, 2),          CALL(gdsOpenGDS, 5),
 		CALL(gdsCloseGDS, 1),           CALL(gdsSyncGDS, 1),
-		CALL(gdsTidyUp, 2),             CALL(gdsShowFile, 1),
+		CALL(gdsTidyUp, 3),             CALL(gdsShowFile, 1),
 		CALL(gdsDiagInfo, 2),           CALL(gdsDiagInfo2, 1),
 		CALL(gdsFileSize, 1),
 
