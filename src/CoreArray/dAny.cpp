@@ -793,8 +793,15 @@ int CdAny::Compare(const CdAny &D, bool NALast)
 			else
 				return 0;
 		} else {
-			long double F1 = GetFloat64();
-			long double F2 = D.GetFloat64();
+			double F1 = GetFloat64();
+			double F2 = D.GetFloat64();
+			if (CoreArray::IsNaN(F1) || CoreArray::IsNaN(F2))
+			{
+				if (CoreArray::IsNaN(F1) && CoreArray::IsNaN(F2))
+					return 0;
+				return CoreArray::IsNaN(F1) ?
+					(NALast ? 1 : -1) : (NALast ? -1 : 1);
+			}
 			if (F1 < F2)
 				return -1;
 			else if (F1 > F2)
