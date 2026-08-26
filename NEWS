@@ -1,5 +1,32 @@
-CHANGES IN VERSION 1.49.5
+CHANGES IN VERSION 1.49.7
 -------------------------
+
+NEW FEATURES
+
+    o new exported functions `gdsRegisterCloudHandler()`,
+      `gdsUnregisterCloudHandler()` and `gdsCloudHandlers()`: the registry of
+      cloud URL scheme handlers used by `openfn.gds()` is now part of the
+      public interface, so that a companion package (e.g., gdscloud) can
+      register its handlers without reaching into the gdsfmt namespace; the
+      handler arguments are validated, the registering package is recorded,
+      and a handler can now be unregistered, which was not previously
+      possible
+
+    o the internal `.gds_register_cloud_handler()` is kept as a deprecated
+      alias for one devel cycle
+
+
+CHANGES IN VERSION 1.49.6
+-------------------------
+
+NEW FEATURES
+
+    o `compression.gdsn()` writes the recompression progress to a text file
+      (the internal temporary file name suffixed with ".progress.txt", located
+      next to the temporary file) so users can monitor how much is left; each
+      line reports the percentage, processed/total bytes and an estimated time
+      to completion, e.g. "47%, 1234567/2600000 bytes, ETA 0:00:12".
+
 
 BUG FIXES
 
