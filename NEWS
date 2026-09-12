@@ -1,3 +1,49 @@
+CHANGES IN VERSION 1.49.8
+-------------------------
+
+UTILITIES
+
+    o `append.gdsn()` copies variable-length strings ("string", "cstring" and
+      their 16-/32-bit variants) as a raw block when the source is a GDS node
+      of the same storage type, instead of decoding and re-encoding one
+      string at a time
+
+    o `append.gdsn()` copies a sparse array ("sp.int8", "sp.real64" and the
+      other sparse types) as a raw block of records when the source is a GDS
+      node of the same storage type, instead of decoding every element and
+      encoding it again.  The cost now follows the size of the encoded data
+      instead of the length of the array: appending a node of a hundred
+      million elements holding a hundred thousand non-zero values is much
+      faster
+
+    o variable-length string nodes now keep an offset index in the GDS file,
+      so random access no longer walks the data from the first element.
+      Nodes written by earlier versions carry no index and are read as before,
+      and files written now remain readable by earlier versions
+
+    o `diagnosis.gds()` on a node reports the offset index under the name
+      "index" instead of counting it as a second data stream; a node keeping
+      more than one is reported as "index1", "index2", ...  The help page now
+      also documents "index" and "ra_stream", the latter being the per-block
+      raw and compressed sizes reported for a node compressed with a
+      random-access coder
+
+
+BUG FIXES
+
+    o `diagnosis.gds()` on a node failed with "attempt to set index 3/3 in
+      SET_STRING_ELT" whenever the node owned more than one byte stream: the
+      names vector was filled one position past its end.  This affected
+      "vl_int" and "vl_uint", which have carried an indexing stream since
+      they were introduced, and the variable-length strings once they gained
+      one
+
+    o deleting a sparse array node ("sp.int8", "sp.real64", ...) left its
+      indexing block behind, because the node did not report that block among
+      the streams it owns; the block was unreachable but still occupied space
+      until `cleanup.gds()` was run
+
+
 CHANGES IN VERSION 1.49.7
 -------------------------
 
@@ -23,9 +69,11 @@ NEW FEATURES
 
     o `compression.gdsn()` writes the recompression progress to a text file
       (the internal temporary file name suffixed with ".progress.txt", located
-      next to the temporary file) so users can monitor how much is left; each
-      line reports the percentage, processed/total bytes and an estimated time
-      to completion, e.g. "47%, 1234567/2600000 bytes, ETA 0:00:12".
+      next to the temporary file) so users can monitor how much is left; it
+      reports the GDS file name, the full node name, the percentage,
+      processed/total bytes and an estimated time to completion, e.g.
+      "File: /home/user/test.gds", "Node: geno/data" and
+      "47%, 1234567/2600000 bytes, ETA 0:00:12".
 
 
 BUG FIXES
