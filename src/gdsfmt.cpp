@@ -2600,9 +2600,12 @@ COREARRAY_DLL_EXPORT SEXP gdsObjAppend(SEXP Node, SEXP Val, SEXP Check)
 /// Append data of a GDS node to a node
 /** \param Node        [in] a GDS node
  *  \param Src         [in] a GDS node
+ *  \param AllowBlock  [in] if FALSE, append element by element
 **/
-COREARRAY_DLL_EXPORT SEXP gdsObjAppend2(SEXP Node, SEXP Src)
+COREARRAY_DLL_EXPORT SEXP gdsObjAppend2(SEXP Node, SEXP Src, SEXP AllowBlock)
 {
+	const bool allow_block = (Rf_asLogical(AllowBlock) == TRUE);
+
 	COREARRAY_TRY
 
 		PdGDSObj Dest = GDS_R_SEXP2Obj(Node, FALSE);
@@ -2610,10 +2613,23 @@ COREARRAY_DLL_EXPORT SEXP gdsObjAppend2(SEXP Node, SEXP Src)
 
 		if (dynamic_cast<CdAbstractArray*>(Dest))
 		{
-			CdContainer *Array = static_cast<CdContainer*>(Source);
+			CdAbstractArray *Obj = static_cast<CdAbstractArray*>(Dest);
+			CdContainer *Array = dynamic_cast<CdContainer*>(Source);
+			if (Array == NULL)
+				throw ErrGDSFmt("'val' should be array-oriented data!");
 			C_Int64 Count = Array->TotalCount();
 			CdIterator I = Array->IterBegin();
-			static_cast<CdAbstractArray*>(Dest)->AppendIter(I, Count);
+			// a node appended to itself would be read and written through
+			// one stream by a block copy, so it goes element by element
+			if (allow_block && (Source != Dest))
+			{
+				// a storage class may copy the encoded data as a block
+				Obj->AppendIter(I, Count);
+			} else {
+				// the base implementation decodes each element from the
+				// source and encodes it again, skipping any block copy
+				Obj->CdAbstractArray::AppendIter(I, Count);
+			}
 		} else
 			throw ErrGDSFmt("No support of GDS node!");
 	}
@@ -3131,7 +3147,8 @@ COREARRAY_DLL_EXPORT SEXP gdsCopyTo(SEXP Node, SEXP Name, SEXP Source)
 		{
 			if (dynamic_cast<CdGDSAbsFolder*>(SObj))
 			{
-				if (static_cast<CdGDSAbsFolder*>(SObj)->HasChild(Obj, true))
+				if ((SObj == Obj) ||
+					static_cast<CdGDSAbsFolder*>(SObj)->HasChild(Obj, true))
 				{
 					throw ErrGDSFmt(
 						"Should not copy the node(s) into its sub folder.");
@@ -4288,7 +4305,7 @@ COREARRAY_DLL_LOCAL void R_Init_RegCallMethods(DllInfo *info)
 
 		CALL(gdsObjCompress, 2),        CALL(gdsObjCompressClose, 1),
 		CALL(gdsObjSetDim, 3),
-		CALL(gdsObjAppend, 3),          CALL(gdsObjAppend2, 2),
+		CALL(gdsObjAppend, 3),          CALL(gdsObjAppend2, 3),
 		CALL(gdsObjReadData, 7),        CALL(gdsObjReadExData, 5),
 		CALL(gdsObjWriteAll, 3),        CALL(gdsObjWriteData, 5),
 		CALL(gdsDataFmt, 3),

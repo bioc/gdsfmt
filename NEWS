@@ -1,5 +1,40 @@
+CHANGES IN VERSION 1.49.9
+-------------------------
+
+UTILITIES
+
+    o `append.gdsn()` and `copyto.gdsn()` carry the compressed blocks of a
+      variable-length string node over unchanged when the source and the
+      target use the same random-access compression method and block size,
+      instead of decompressing and compressing them again
+
+
+BUG FIXES
+
+    o `append.gdsn(node, val)` with a numeric GDS node 'val' of at least
+      65536 elements could corrupt 'node': the data were written at a wrong
+      position when 'node' was not compressed and had been read before, or
+      when 'val' was 'node' itself
+
+    o `assign.gdsn(node, node)` emptied 'node'; it now leaves 'node' as it is
+
+    o `copyto.gdsn(node, source)` with 'node' being the folder 'source' itself
+      never returned, filling the GDS file with nested copies of the folder;
+      it now gives the error "Should not copy the node(s) into its sub
+      folder."
+
+
 CHANGES IN VERSION 1.49.8
 -------------------------
+
+NEW FEATURES
+
+    o new argument 'allow.block' in `append.gdsn()`: if TRUE (the default),
+      a GDS node given as 'val' can be appended by copying its encoded data
+      as a block when it has the same storage type as the target node;
+      'allow.block=FALSE' decodes every element and encodes it again, so
+      that the appended data are compressed according to the target node
+      (e.g., with its own compression level)
 
 UTILITIES
 
@@ -11,10 +46,7 @@ UTILITIES
     o `append.gdsn()` copies a sparse array ("sp.int8", "sp.real64" and the
       other sparse types) as a raw block of records when the source is a GDS
       node of the same storage type, instead of decoding every element and
-      encoding it again.  The cost now follows the size of the encoded data
-      instead of the length of the array: appending a node of a hundred
-      million elements holding a hundred thousand non-zero values is much
-      faster
+      encoding it again
 
     o variable-length string nodes now keep an offset index in the GDS file,
       so random access no longer walks the data from the first element.
@@ -43,6 +75,11 @@ BUG FIXES
       the streams it owns; the block was unreachable but still occupied space
       until `cleanup.gds()` was run
 
+    o `append.gdsn(node, val)` with a GDS node 'val' that is not an array
+      treated 'val' as an array without checking it: a folder gave a garbled
+      error message ("Invalid node name ...") and a label crashed R; it now
+      gives the error "'val' should be array-oriented data!"
+
 
 CHANGES IN VERSION 1.49.7
 -------------------------
@@ -60,12 +97,6 @@ NEW FEATURES
 
     o the internal `.gds_register_cloud_handler()` is kept as a deprecated
       alias for one devel cycle
-
-
-CHANGES IN VERSION 1.49.6
--------------------------
-
-NEW FEATURES
 
     o `compression.gdsn()` writes the recompression progress to a text file
       (the internal temporary file name suffixed with ".progress.txt", located
