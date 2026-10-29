@@ -1,27 +1,15 @@
 CHANGES IN VERSION 1.49.9
--------------------------
+--------------------------
 
-UTILITIES
+NEW FEATURES
 
-    o `append.gdsn()` and `copyto.gdsn()` carry the compressed blocks of a
-      variable-length string node over unchanged when the source and the
-      target use the same random-access compression method and block size,
-      instead of decompressing and compressing them again
-
-
-BUG FIXES
-
-    o `append.gdsn(node, val)` with a numeric GDS node 'val' of at least
-      65536 elements could corrupt 'node': the data were written at a wrong
-      position when 'node' was not compressed and had been read before, or
-      when 'val' was 'node' itself
-
-    o `assign.gdsn(node, node)` emptied 'node'; it now leaves 'node' as it is
-
-    o `copyto.gdsn(node, source)` with 'node' being the folder 'source' itself
-      never returned, filling the GDS file with nested copies of the folder;
-      it now gives the error "Should not copy the node(s) into its sub
-      folder."
+    o new storage types "rle.uint8", "rle.int32" (or "rle.int"), "rle.int64",
+      "rle.float32" (or "rle.float"), "rle.float64" (or "rle.real" and
+      "rle.double") and "rle.string": run-length encoded arrays.  The values
+      are stored as runs of one repeated value, runs of an arithmetic
+      progression (a first value and a step, so that `seq(0, 1, by=0.01)`
+      takes 18 bytes) and blocks of up to 128 values kept as they are, with a
+      table of checkpoints for random access
 
 
 CHANGES IN VERSION 1.49.8
@@ -46,7 +34,10 @@ UTILITIES
     o `append.gdsn()` copies a sparse array ("sp.int8", "sp.real64" and the
       other sparse types) as a raw block of records when the source is a GDS
       node of the same storage type, instead of decoding every element and
-      encoding it again
+      encoding it again.  The cost now follows the size of the encoded data
+      instead of the length of the array: appending a node of a hundred
+      million elements holding a hundred thousand non-zero values is about
+      87 times faster
 
     o variable-length string nodes now keep an offset index in the GDS file,
       so random access no longer walks the data from the first element.
@@ -97,6 +88,12 @@ NEW FEATURES
 
     o the internal `.gds_register_cloud_handler()` is kept as a deprecated
       alias for one devel cycle
+
+
+CHANGES IN VERSION 1.49.6
+-------------------------
+
+NEW FEATURES
 
     o `compression.gdsn()` writes the recompression progress to a text file
       (the internal temporary file name suffixed with ".progress.txt", located
