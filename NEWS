@@ -1,12 +1,27 @@
-CHANGES IN VERSION 1.49.12
+CHANGES IN VERSION 1.50.0
 ---------------------------
 
 NEW FEATURES
+
+    o new storage types "rle.uint8", "rle.int32" (or "rle.int"), "rle.int64",
+      "rle.float32" (or "rle.float"), "rle.float64" (or "rle.real" and
+      "rle.double") and "rle.string": run-length encoded arrays.  The values
+      are stored as runs of one repeated value, runs of an arithmetic
+      progression (a first value and a step, so that `seq(0, 1, by=0.01)`
+      takes 18 bytes) and blocks of up to 128 values kept as they are, with a
+      table of checkpoints for random access
 
     o add.gdsn() and append.gdsn() accept an object of class "rle" returned
       by base::rle(), for a node of any storage type.  The elements are
       written through a buffer of a fixed size, so the memory needed does not
       depend on the number of elements
+
+    o new argument 'allow.block' in `append.gdsn()`: if TRUE (the default),
+      a GDS node given as 'val' can be appended by copying its encoded data
+      as a block when it has the same storage type as the target node;
+      'allow.block=FALSE' decodes every element and encodes it again, so
+      that the appended data are compressed according to the target node
+      (e.g., with its own compression level)
 
 SIGNIFICANT USER-VISIBLE CHANGES
 
@@ -21,50 +36,9 @@ UTILITIES
     o update XZ to v5.8.4 from v5.2.9 (liblzma is now under the BSD Zero
       Clause License); GDS files stay compatible in both directions
 
-BUG FIXES
-
-    o add.gdsn(node, name, val, storage=<gdsn.class>) without `valdim` set
-      the last dimension to zero after writing `val`, and the values were
-      lost; now the last dimension is large enough to hold them
-
-
-CHANGES IN VERSION 1.49.11
----------------------------
-
-UTILITIES
-
     o update zlib to v1.3.1 from v1.2.13: the bundled zlib sources are the
       unmodified upstream release, so the local changes for C23 compilers
       are no longer needed
-
-
-CHANGES IN VERSION 1.49.9
---------------------------
-
-NEW FEATURES
-
-    o new storage types "rle.uint8", "rle.int32" (or "rle.int"), "rle.int64",
-      "rle.float32" (or "rle.float"), "rle.float64" (or "rle.real" and
-      "rle.double") and "rle.string": run-length encoded arrays.  The values
-      are stored as runs of one repeated value, runs of an arithmetic
-      progression (a first value and a step, so that `seq(0, 1, by=0.01)`
-      takes 18 bytes) and blocks of up to 128 values kept as they are, with a
-      table of checkpoints for random access
-
-
-CHANGES IN VERSION 1.49.8
--------------------------
-
-NEW FEATURES
-
-    o new argument 'allow.block' in `append.gdsn()`: if TRUE (the default),
-      a GDS node given as 'val' can be appended by copying its encoded data
-      as a block when it has the same storage type as the target node;
-      'allow.block=FALSE' decodes every element and encodes it again, so
-      that the appended data are compressed according to the target node
-      (e.g., with its own compression level)
-
-UTILITIES
 
     o `append.gdsn()` copies variable-length strings ("string", "cstring" and
       their 16-/32-bit variants) as a raw block when the source is a GDS node
@@ -91,8 +65,11 @@ UTILITIES
       raw and compressed sizes reported for a node compressed with a
       random-access coder
 
-
 BUG FIXES
+
+    o add.gdsn(node, name, val, storage=<gdsn.class>) without `valdim` set
+      the last dimension to zero after writing `val`, and the values were
+      lost; now the last dimension is large enough to hold them
 
     o `diagnosis.gds()` on a node failed with "attempt to set index 3/3 in
       SET_STRING_ELT" whenever the node owned more than one byte stream: the
@@ -129,12 +106,6 @@ NEW FEATURES
     o the internal `.gds_register_cloud_handler()` is kept as a deprecated
       alias for one devel cycle
 
-
-CHANGES IN VERSION 1.49.6
--------------------------
-
-NEW FEATURES
-
     o `compression.gdsn()` writes the recompression progress to a text file
       (the internal temporary file name suffixed with ".progress.txt", located
       next to the temporary file) so users can monitor how much is left; it
@@ -142,21 +113,6 @@ NEW FEATURES
       processed/total bytes and an estimated time to completion, e.g.
       "File: /home/user/test.gds", "Node: geno/data" and
       "47%, 1234567/2600000 bytes, ETA 0:00:12".
-
-
-BUG FIXES
-
-    o define an S4 `$` method for `gds.class` so that S4 subclasses (e.g.,
-      SeqVarGDSClass in SeqArray) still support `$` element access after the
-      `as()` coercion change in R 4.6.1 (R NEWS: "as() now correctly coerces
-      to S4 superclasses extending old-style classes instead of returning only
-      the S3 part").
-
-
-CHANGES IN VERSION 1.49.4
--------------------------
-
-NEW FEATURES
 
     o new argument 'sort' in `cleanup.gds()`: if TRUE (the default),
       rearrange data blocks when defragmenting -- all node header blocks are
@@ -167,7 +123,22 @@ NEW FEATURES
       cache hit rate during tree navigation;
       'sort=FALSE' for backward compatibility
 
+UTILITIES
+
+    o `diagnosis.gds()` now appends a trailing '/' to folder node names in
+      the stream info output, making it easier to distinguish folders from
+      leaf nodes
+
+    o `moveto.gdsn()` supports a new `relpos="into"` option to move a node
+      into a different folder within the same GDS file
+
 BUG FIXES
+
+    o define an S4 `$` method for `gds.class` so that S4 subclasses (e.g.,
+      SeqVarGDSClass in SeqArray) still support `$` element access after the
+      `as()` coercion change in R 4.6.1 (R NEWS: "as() now correctly coerces
+      to S4 superclasses extending old-style classes instead of returning only
+      the S3 part").
 
     o fixed virtual dispatch error in `unload.gdsn()`: when a node has
       unsaved attribute changes and is unloaded, the object destructor's
@@ -188,15 +159,6 @@ BUG FIXES
       unregistered class names (e.g., from external packages like SeqArray).
       The sort traversal now uses TNode metadata directly without triggering
       class deserialization for non-folder nodes
-
-UTILITIES
-
-    o `diagnosis.gds()` now appends a trailing '/' to folder node names in
-      the stream info output, making it easier to distinguish folders from
-      leaf nodes
-
-    o `moveto.gdsn()` supports a new `relpos="into"` option to move a node
-      into a different folder within the same GDS file
 
 
 CHANGES IN VERSION 1.48.1
